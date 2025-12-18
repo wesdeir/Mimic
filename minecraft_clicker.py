@@ -2,23 +2,25 @@
 ═══════════════════════════════════════════════════════════════════════════════
 MINECRAFT AUTO CLICKER - ANTI-CHEAT COMPLIANT
 ═══════════════════════════════════════════════════════════════════════════════
-Version: 3.1 - Multi-Page Interface with Histogram Visualization
+Version: 3.4 - Dedicated Training Page with Click-Type Selection
 Target: 7-12 CPS range with human-like variance
-Features:
-  - 4-Page tabbed interface with keyboard/mouse navigation
-  - Live dashboard with real-time statistics
-  - Advanced settings and configuration page
-  - Analytics page with session history
-  - NEW: Histogram visualization of click delay distribution
-  - Professional dark theme UI
+
+New in v3.4:
+  - Dedicated Training page (5th page)
+  - Click-type selection: Butterfly/Jitter/Normal
+  - Multi-select training mode tracking
+  - Smart export with training type in filename
+  - Session tracking per click type
+  - File organization recommendations
   
 Navigation:
   - Arrow Keys (← →): Switch pages
   - Enter: Toggle activation
-  - Escape: Quick disable
-  - F5: Export stats (any page)
-  - F7: Training mode toggle
-  - F8: Export human baseline
+  - F4: Toggle On/Off
+  - F5: Export detailed stats
+  - F7: Start/Stop Training
+  - F8: Export training baseline
+  - F9: Toggle Enhanced Mode
   
 Requirements:
   - Python 3.x
@@ -34,9 +36,10 @@ import math
 from datetime import datetime
 import keyboard
 import threading
-from collections import deque, Counter
+from collections import deque
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
+import os
 
 import win32api
 import win32con
@@ -69,17 +72,20 @@ class Config:
     # Mouse Button Constants
     VK_XBUTTON2 = 0x06  # MB5
     VK_LBUTTON = 0x01   # Left mouse button
+    
+    # Training Data Organization
+    TRAINING_DATA_FOLDER = "training_data"  # Suggested folder for training exports
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# CLICKER ENGINE
+# CLICKER ENGINE (Same as v3.3)
 # ═════════════════════════════════════════════════════════════════════════════
 
 class ClickerEngine:
     """Core clicking engine with advanced anti-detection algorithms"""
     
-    def __init__(self, enhanced_mode=False):
-        """Initialize the clicker engine"""
+    def __init__(self, enhanced_mode=True):
+        """Initialize the clicker engine - Enhanced mode is now default"""
         self.enhanced_mode = enhanced_mode
         self.total_clicks = 0
         self.session_start = datetime.now()
@@ -357,11 +363,11 @@ class ClickerEngine:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HUMAN CLICK TRACKER
+# HUMAN CLICK TRACKER - ENHANCED WITH CLICK TYPE
 # ═════════════════════════════════════════════════════════════════════════════
 
 class HumanClickTracker:
-    """Tracks legitimate human clicks for baseline analysis"""
+    """Tracks legitimate human clicks for baseline analysis with click-type tracking"""
     
     def __init__(self):
         self.is_tracking = False
@@ -370,19 +376,21 @@ class HumanClickTracker:
         self.session_start = None
         self.last_click_time = None
         self.total_clicks = 0
+        self.training_type = "normal"  # Default: butterfly, jitter, normal, or mixed
     
-    def start_tracking(self):
+    def start_tracking(self, training_type="normal"):
         self.is_tracking = True
+        self.training_type = training_type
         self.session_start = datetime.now()
         self.click_times = []
         self.click_delays = []
         self.last_click_time = None
         self.total_clicks = 0
-        print("\n[TRAINING MODE] Recording your clicks...\n")
+        print(f"\n[TRAINING MODE: {training_type.upper()}] Recording your clicks...\n")
     
     def stop_tracking(self):
         self.is_tracking = False
-        print("\n[TRAINING MODE] Stopped recording.\n")
+        print(f"\n[TRAINING MODE: {self.training_type.upper()}] Stopped recording.\n")
     
     def record_click(self):
         if not self.is_tracking:
@@ -395,22 +403,215 @@ class HumanClickTracker:
             if delay_ms < 500:
                 self.click_delays.append(delay_ms)
         self.last_click_time = current_time
+    
+    def calculate_variance(self):
+        if len(self.click_delays) < 10:
+            return 0
+        mean = sum(self.click_delays) / len(self.click_delays)
+        return sum((x - mean) ** 2 for x in self.click_delays) / len(self.click_delays)
+    
+    def get_stats(self):
+        """Generate statistics comparable to auto-clicker stats"""
+        if len(self.click_delays) < 10:
+            return None
+        delays = self.click_delays
+        avg_delay = sum(delays) / len(delays)
+        sorted_delays = sorted(delays)
+        p10 = sorted_delays[int(len(sorted_delays) * 0.10)]
+        p50 = sorted_delays[int(len(sorted_delays) * 0.50)]
+        p90 = sorted_delays[int(len(sorted_delays) * 0.90)]
+        session_duration = (datetime.now() - self.session_start).total_seconds()
+        return {
+            "total": self.total_clicks,
+            "valid_delays": len(delays),
+            "avg_cps": 1000.0 / avg_delay,
+            "min_cps": 1000.0 / max(delays),
+            "max_cps": 1000.0 / min(delays),
+            "median_cps": 1000.0 / p50,
+            "variance": self.calculate_variance(),
+            "session_duration": session_duration,
+            "p10_delay": p10,
+            "p50_delay": p50,
+            "p90_delay": p90,
+            "min_delay": min(delays),
+            "max_delay": max(delays),
+            "avg_delay": avg_delay,
+            "training_type": self.training_type
+        }
+    
+    def export_human_stats(self):
+        """Export complete human clicking statistics with training type"""
+        stats = self.get_stats()
+        
+        if not stats:
+            print("\n[!] Not enough data. Need at least 10 clicks!\n")
+            return
+        
+        training_type = stats['training_type'].upper()
+        
+        report = f"""
+======================================================================
+HUMAN CLICK ANALYSIS - {training_type} CLICKING PATTERN
+======================================================================
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Training Mode: {training_type}
+Click Type: {"Butterfly (2 fingers alternating)" if stats['training_type'] == 'butterfly' else "Jitter (rapid wrist/arm)" if stats['training_type'] == 'jitter' else "Normal (single finger)" if stats['training_type'] == 'normal' else "Mixed Techniques"}
+
+SESSION OVERVIEW
+----------------------------------------------------------------------
+Total Clicks Recorded:     {stats['total']}
+Valid Click Intervals:     {stats['valid_delays']}
+Session Duration:          {stats['session_duration']:.1f} seconds
+
+Average CPS:               {stats['avg_cps']:.2f}
+Median CPS:                {stats['median_cps']:.2f}
+
+CPS STATISTICS
+----------------------------------------------------------------------
+Minimum CPS:               {stats['min_cps']:.2f}
+Maximum CPS:               {stats['max_cps']:.2f}
+CPS Range:                 {stats['min_cps']:.2f} - {stats['max_cps']:.2f}
+
+DELAY STATISTICS (milliseconds)
+----------------------------------------------------------------------
+Average Delay:             {stats['avg_delay']:.2f} ms
+Median Delay (P50):        {stats['p50_delay']:.2f} ms
+10th Percentile (P10):     {stats['p10_delay']:.2f} ms
+90th Percentile (P90):     {stats['p90_delay']:.2f} ms
+Min Delay:                 {stats['min_delay']:.2f} ms
+Max Delay:                 {stats['max_delay']:.2f} ms
+
+HUMAN BEHAVIOR METRICS
+----------------------------------------------------------------------
+Variance:                  {stats['variance']:.0f}
+Consistency:               {'High' if stats['variance'] < 200 else 'Moderate' if stats['variance'] < 400 else 'Low'}
+
+======================================================================
+CLICK TYPE CHARACTERISTICS - {training_type}
+======================================================================
+"""
+        
+        # Add click-type specific analysis
+        if stats['training_type'] == 'butterfly':
+            report += """
+BUTTERFLY CLICKING PATTERN DETECTED:
+- Expected: High CPS (10-20+), very high variance (2000+)
+- Two-finger alternating technique
+- Common variance: 1500-3500
+- Burst patterns with occasional pauses
+"""
+        elif stats['training_type'] == 'jitter':
+            report += """
+JITTER CLICKING PATTERN DETECTED:
+- Expected: Moderate-High CPS (8-14), moderate variance (800-1500)
+- Rapid wrist/arm tension technique
+- More consistent than butterfly
+- Sustained clicking without bursts
+"""
+        elif stats['training_type'] == 'normal':
+            report += """
+NORMAL CLICKING PATTERN DETECTED:
+- Expected: Lower CPS (5-9), low-moderate variance (200-800)
+- Single finger tapping
+- Most consistent pattern
+- Natural rhythm with occasional variation
+"""
+        else:
+            report += """
+MIXED CLICKING PATTERN DETECTED:
+- Combination of multiple techniques
+- Varied CPS and variance depending on switching
+- Adaptive clicking style
+"""
+        
+        report += f"""
+
+YOUR {training_type.upper()} PATTERN ANALYSIS:
+----------------------------------------------------------------------
+Your Average CPS:          {stats['avg_cps']:.2f}
+Your Variance:             {stats['variance']:.0f}
+Pattern Consistency:       {'Very Consistent' if stats['variance'] < 300 else 'Moderate' if stats['variance'] < 1000 else 'Highly Variable'}
+
+RECOMMENDATION FOR AUTO-CLICKER:
+----------------------------------------------------------------------
+"""
+        
+        if stats['variance'] > 2000:
+            report += "✅ Use Enhanced Chaos Mode - Your variance matches butterfly clicking\n"
+        elif stats['variance'] > 800:
+            report += "✅ Use Enhanced Chaos Mode - Good for jitter-style clicking\n"
+        else:
+            report += "⚠️  Your variance is low for this technique - May need more practice\n"
+        
+        report += """
+======================================================================
+FILE ORGANIZATION RECOMMENDATION:
+======================================================================
+Save this file to: training_data/""" + f"""{stats['training_type']}/
+
+Suggested folder structure:
+  training_data/
+    ├── butterfly/
+    │   ├── butterfly_baseline_YYYYMMDD_HHMMSS.txt
+    │   └── ...
+    ├── jitter/
+    │   ├── jitter_baseline_YYYYMMDD_HHMMSS.txt
+    │   └── ...
+    ├── normal/
+    │   ├── normal_baseline_YYYYMMDD_HHMMSS.txt
+    │   └── ...
+    └── mixed/
+        └── mixed_baseline_YYYYMMDD_HHMMSS.txt
+
+This helps organize data for future AI analysis!
+======================================================================
+"""
+        
+        print(report)
+        
+        # Create organized filename with training type
+        training_type_safe = stats['training_type'].lower().replace(' ', '_')
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{training_type_safe}_baseline_{timestamp}.txt"
+        
+        # Create training_data folder if it doesn't exist
+        folder_path = os.path.join(Config.TRAINING_DATA_FOLDER, training_type_safe)
+        try:
+            os.makedirs(folder_path, exist_ok=True)
+            full_path = os.path.join(folder_path, filename)
+            
+            with open(full_path, 'w') as f:
+                f.write(report)
+            print(f"[SUCCESS] Baseline exported to: {full_path}\n")
+            print(f"[INFO] File saved in organized folder structure for future analysis\n")
+        except Exception as e:
+            # Fallback to current directory
+            try:
+                with open(filename, 'w') as f:
+                    f.write(report)
+                print(f"[SUCCESS] Baseline exported to: {filename}\n")
+                print(f"[INFO] Could not create folder structure: {e}\n")
+            except Exception as e2:
+                print(f"[ERROR] Could not save to file: {e2}\n")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HISTOGRAM VISUALIZER
+# HISTOGRAM VISUALIZER (Same as v3.3)
 # ═════════════════════════════════════════════════════════════════════════════
 
 class HistogramCanvas(tk.Canvas):
-    """Custom histogram visualization for click delay distribution"""
+    """Custom histogram visualization with better scaling and Y-axis labels"""
     
-    def __init__(self, parent, width=460, height=300, **kwargs):
+    def __init__(self, parent, width=560, height=280, **kwargs):
         super().__init__(parent, width=width, height=height, bg="#1a1a1a", highlightthickness=0, **kwargs)
         self.width = width
         self.height = height
-        self.padding = 40
-        self.chart_width = width - 2 * self.padding
-        self.chart_height = height - 2 * self.padding
+        self.padding_left = 55
+        self.padding_right = 30
+        self.padding_top = 35
+        self.padding_bottom = 45
+        self.chart_width = width - self.padding_left - self.padding_right
+        self.chart_height = height - self.padding_top - self.padding_bottom
         
         # Colors
         self.grid_color = "#333333"
@@ -422,7 +623,7 @@ class HistogramCanvas(tk.Canvas):
         self.bar_risky = "#f44336"
         
     def draw_histogram(self, delays, mean, std_dev, enhanced_mode=False):
-        """Draw histogram with statistical markers"""
+        """Draw histogram with statistical markers and Y-axis labels"""
         self.delete("all")
         
         if not delays or len(delays) < 5:
@@ -451,29 +652,43 @@ class HistogramCanvas(tk.Canvas):
         
         max_count = max(bins) if max(bins) > 0 else 1
         
-        # Draw grid lines
-        for i in range(5):
-            y = self.padding + (i * self.chart_height // 4)
+        # Draw grid lines with Y-axis labels
+        num_grid_lines = 5
+        for i in range(num_grid_lines + 1):
+            y = self.padding_top + (i * self.chart_height // num_grid_lines)
+            count_value = int(max_count * (1 - i / num_grid_lines))
+            
+            # Grid line
             self.create_line(
-                self.padding, y,
-                self.padding + self.chart_width, y,
+                self.padding_left, y,
+                self.padding_left + self.chart_width, y,
                 fill=self.grid_color,
                 dash=(2, 2)
             )
+            
+            # Y-axis label
+            self.create_text(
+                self.padding_left - 10, y,
+                text=str(count_value),
+                fill=self.text_color,
+                font=("Arial", 8),
+                anchor="e"
+            )
         
-        # Draw histogram bars
-        bar_width = self.chart_width / num_bins
+        # Draw histogram bars with 90% max height
+        bar_width_px = self.chart_width / num_bins
+        max_bar_height = self.chart_height * 0.9
+        
         for i, count in enumerate(bins):
             if count == 0:
                 continue
             
-            x1 = self.padding + i * bar_width
-            bar_height = (count / max_count) * self.chart_height
-            y1 = self.padding + self.chart_height - bar_height
-            x2 = x1 + bar_width - 2
-            y2 = self.padding + self.chart_height
+            x1 = self.padding_left + i * bar_width_px
+            bar_height = (count / max_count) * max_bar_height
+            y1 = self.padding_top + self.chart_height - bar_height
+            x2 = x1 + bar_width_px - 2
+            y2 = self.padding_top + self.chart_height
             
-            # Determine bar color based on delay range
             delay_value = min_delay + i * bin_width
             if 84 <= delay_value <= 143:
                 color = self.bar_optimal
@@ -489,38 +704,38 @@ class HistogramCanvas(tk.Canvas):
             )
         
         # Draw mean line
-        mean_x = self.padding + ((mean - min_delay) / (max_delay - min_delay)) * self.chart_width
-        if self.padding <= mean_x <= self.padding + self.chart_width:
+        mean_x = self.padding_left + ((mean - min_delay) / (max_delay - min_delay)) * self.chart_width
+        if self.padding_left <= mean_x <= self.padding_left + self.chart_width:
             self.create_line(
-                mean_x, self.padding,
-                mean_x, self.padding + self.chart_height,
+                mean_x, self.padding_top,
+                mean_x, self.padding_top + self.chart_height,
                 fill=self.mean_color,
                 width=2
             )
             self.create_text(
-                mean_x, self.padding - 10,
+                mean_x, self.padding_top - 15,
                 text=f"μ={mean:.0f}ms",
                 fill=self.mean_color,
                 font=("Arial", 8, "bold")
             )
         
         # Draw standard deviation bands
-        std_left = self.padding + ((mean - std_dev - min_delay) / (max_delay - min_delay)) * self.chart_width
-        std_right = self.padding + ((mean + std_dev - min_delay) / (max_delay - min_delay)) * self.chart_width
+        std_left = self.padding_left + ((mean - std_dev - min_delay) / (max_delay - min_delay)) * self.chart_width
+        std_right = self.padding_left + ((mean + std_dev - min_delay) / (max_delay - min_delay)) * self.chart_width
         
-        if self.padding <= std_left <= self.padding + self.chart_width:
+        if self.padding_left <= std_left <= self.padding_left + self.chart_width:
             self.create_line(
-                std_left, self.padding,
-                std_left, self.padding + self.chart_height,
+                std_left, self.padding_top,
+                std_left, self.padding_top + self.chart_height,
                 fill=self.std_color,
                 width=1,
                 dash=(4, 4)
             )
         
-        if self.padding <= std_right <= self.padding + self.chart_width:
+        if self.padding_left <= std_right <= self.padding_left + self.chart_width:
             self.create_line(
-                std_right, self.padding,
-                std_right, self.padding + self.chart_height,
+                std_right, self.padding_top,
+                std_right, self.padding_top + self.chart_height,
                 fill=self.std_color,
                 width=1,
                 dash=(4, 4)
@@ -528,21 +743,30 @@ class HistogramCanvas(tk.Canvas):
         
         # Draw axes
         self.create_line(
-            self.padding, self.padding + self.chart_height,
-            self.padding + self.chart_width, self.padding + self.chart_height,
+            self.padding_left, self.padding_top + self.chart_height,
+            self.padding_left + self.chart_width, self.padding_top + self.chart_height,
+            fill=self.text_color,
+            width=2
+        )
+        
+        self.create_line(
+            self.padding_left, self.padding_top,
+            self.padding_left, self.padding_top + self.chart_height,
             fill=self.text_color,
             width=2
         )
         
         # X-axis labels
-        for i in range(0, num_bins + 1, max(1, num_bins // 5)):
-            x = self.padding + i * bar_width
-            delay_label = min_delay + i * bin_width
+        num_labels = min(6, num_bins + 1)
+        for i in range(num_labels):
+            bin_idx = int((i / (num_labels - 1)) * num_bins) if num_labels > 1 else 0
+            x = self.padding_left + bin_idx * bar_width_px
+            delay_label = min_delay + bin_idx * bin_width
             self.create_text(
-                x, self.padding + self.chart_height + 15,
+                x, self.padding_top + self.chart_height + 22,
                 text=f"{delay_label}",
                 fill=self.text_color,
-                font=("Arial", 7)
+                font=("Arial", 8)
             )
         
         # Axis titles
@@ -550,32 +774,32 @@ class HistogramCanvas(tk.Canvas):
             self.width // 2, self.height - 10,
             text="Delay (ms)",
             fill=self.text_color,
-            font=("Arial", 8, "bold")
+            font=("Arial", 9, "bold")
         )
         
         self.create_text(
-            10, self.height // 2,
+            15, self.height // 2,
             text="Count",
             fill=self.text_color,
-            font=("Arial", 8, "bold"),
+            font=("Arial", 9, "bold"),
             angle=90
         )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MULTI-PAGE GUI APPLICATION
+# MULTI-PAGE GUI APPLICATION WITH TRAINING PAGE
 # ═════════════════════════════════════════════════════════════════════════════
 
 class AutoClickerGUI:
-    """Multi-page graphical user interface with histogram visualization"""
+    """Multi-page graphical user interface with dedicated training page"""
     
     def __init__(self):
         """Initialize the multi-page GUI"""
         
         # Main Window Setup
         self.root = tk.Tk()
-        self.root.title("Minecraft Auto Clicker v3.1")
-        self.root.geometry("500x800")
+        self.root.title("Minecraft Auto Clicker v3.4")
+        self.root.geometry("620x720")
         self.root.resizable(False, False)
         
         # Dark Theme Colors
@@ -601,8 +825,11 @@ class AutoClickerGUI:
         self.running = True
         self.last_session_stats = None
         self.human_tracker = HumanClickTracker()
-        self.enhanced_mode = False
+        self.enhanced_mode = True
         self.session_history = []
+        
+        # Training state
+        self.selected_training_types = []  # Can track multiple types
         
         # Page Management
         self.current_page = 0
@@ -620,9 +847,9 @@ class AutoClickerGUI:
     def setup_ui(self):
         """Build the complete multi-page interface"""
         
-        # HEADER (Fixed across all pages)
-        header_frame = tk.Frame(self.root, bg=self.header_color, height=100)
-        header_frame.pack(fill=tk.X, pady=(0, 10))
+        # HEADER
+        header_frame = tk.Frame(self.root, bg=self.header_color, height=110)
+        header_frame.pack(fill=tk.X, pady=(0, 8))
         header_frame.pack_propagate(False)
         
         title = tk.Label(
@@ -632,7 +859,7 @@ class AutoClickerGUI:
             bg=self.header_color,
             fg=self.fg_color
         )
-        title.pack(pady=(12, 2))
+        title.pack(pady=(15, 3))
         
         subtitle = tk.Label(
             header_frame,
@@ -641,16 +868,16 @@ class AutoClickerGUI:
             bg=self.header_color,
             fg="#888888"
         )
-        subtitle.pack()
+        subtitle.pack(pady=(0, 5))
         
         self.mode_indicator = tk.Label(
             header_frame,
-            text="Standard Mode",
+            text="⚡ Enhanced Chaos Mode",
             font=("Arial", 8, "italic"),
             bg=self.header_color,
-            fg="#888888"
+            fg=self.enhanced_color
         )
-        self.mode_indicator.pack(pady=(3, 0))
+        self.mode_indicator.pack(pady=(0, 5))
         
         self.status_indicator = tk.Label(
             header_frame,
@@ -659,14 +886,14 @@ class AutoClickerGUI:
             bg=self.header_color,
             fg=self.inactive_color
         )
-        self.status_indicator.pack(pady=(5, 0))
+        self.status_indicator.pack(pady=(0, 10))
         
-        # TAB NAVIGATION
+        # TAB NAVIGATION - NOW 5 TABS
         tab_frame = tk.Frame(self.root, bg=self.bg_color)
-        tab_frame.pack(fill=tk.X, padx=20, pady=(0, 10))
+        tab_frame.pack(fill=tk.X, padx=25, pady=(0, 8))
         
         self.tab_buttons = []
-        tab_names = ["Dashboard", "Settings", "Analytics", "Histogram"]
+        tab_names = ["Dashboard", "Settings", "Analytics", "Histogram", "Training"]
         
         for i, name in enumerate(tab_names):
             btn = tk.Button(
@@ -681,22 +908,23 @@ class AutoClickerGUI:
                 cursor="hand2",
                 command=lambda idx=i: self.switch_page(idx)
             )
-            btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+            btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
             self.tab_buttons.append(btn)
         
         # CONTENT CONTAINER
         self.content_frame = tk.Frame(self.root, bg=self.bg_color)
-        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=20)
+        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=25)
         
         # Create all pages
         self.create_page_dashboard()
         self.create_page_settings()
         self.create_page_analytics()
         self.create_page_histogram()
+        self.create_page_training()  # NEW!
         
         # NAVIGATION FOOTER
         nav_frame = tk.Frame(self.root, bg=self.bg_color)
-        nav_frame.pack(fill=tk.X, padx=20, pady=15)
+        nav_frame.pack(fill=tk.X, padx=25, pady=12)
         
         self.prev_btn = tk.Button(
             nav_frame,
@@ -714,7 +942,7 @@ class AutoClickerGUI:
         
         self.page_indicator = tk.Label(
             nav_frame,
-            text="1 / 4",
+            text="1 / 5",
             font=("Arial", 10, "bold"),
             bg=self.bg_color,
             fg="#888888"
@@ -739,14 +967,16 @@ class AutoClickerGUI:
         self.switch_page(0)
     
     
+    # [PAGES 1-4 remain the same - Dashboard, Settings, Analytics, Histogram]
+    # I'll include them but they're identical to v3.3, just adding page 5
+    
     def create_page_dashboard(self):
-        """Create Page 1: Dashboard with live statistics"""
+        """Create Page 1: Dashboard (same as v3.3)"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
-        # Status panel
         status_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        status_panel.pack(fill=tk.X, pady=(0, 10))
+        status_panel.pack(fill=tk.X, pady=(0, 8))
         
         self.click_status = tk.Label(
             status_panel,
@@ -755,33 +985,30 @@ class AutoClickerGUI:
             bg=self.panel_color,
             fg="#888888"
         )
-        self.click_status.pack(pady=15)
+        self.click_status.pack(pady=12)
         
-        # Live statistics
         stats_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        stats_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        stats_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
         
         tk.Label(
             stats_panel,
             text="Live Statistics",
-            font=("Arial", 13, "bold"),
+            font=("Arial", 12, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
         stats_grid = tk.Frame(stats_panel, bg=self.panel_color)
-        stats_grid.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+        stats_grid.pack(pady=8, padx=20, fill=tk.BOTH, expand=True)
         
-        # Create stat rows
         self.create_stat_row(stats_grid, "Total Clicks", "total_clicks", 0)
         self.create_stat_row(stats_grid, "Current CPS", "current_cps", 1)
         self.create_stat_row(stats_grid, "Variance", "variance", 2)
         self.create_stat_row(stats_grid, "Session Avg", "session_cps", 3)
         self.create_stat_row(stats_grid, "Time Elapsed", "time_elapsed", 4)
         
-        tk.Label(stats_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(stats_panel, text="", bg=self.panel_color, height=1).pack()
         
-        # Quick actions
         actions_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         actions_panel.pack(fill=tk.X)
         
@@ -824,17 +1051,28 @@ class AutoClickerGUI:
         )
         export_btn.pack(side=tk.LEFT, padx=5)
         
-        tk.Label(actions_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(actions_panel, text="", bg=self.panel_color, height=1).pack()
     
     
     def create_page_settings(self):
-        """Create Page 2: Settings and configuration"""
+        """Create Page 2: Settings (minimal changes from v3.3)"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
-        # Mode settings
-        mode_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        mode_panel.pack(fill=tk.X, pady=(0, 10))
+        canvas = tk.Canvas(page, bg=self.bg_color, highlightthickness=0, height=510)
+        scrollbar = tk.Scrollbar(page, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.bg_color)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        mode_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        mode_panel.pack(fill=tk.X, pady=(0, 8), padx=2)
         
         tk.Label(
             mode_panel,
@@ -842,16 +1080,16 @@ class AutoClickerGUI:
             font=("Arial", 12, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
         enhanced_frame = tk.Frame(mode_panel, bg=self.panel_color)
-        enhanced_frame.pack(pady=10)
+        enhanced_frame.pack(pady=8)
         
         self.enhanced_btn = tk.Button(
             enhanced_frame,
-            text="⚡ Enhanced Chaos Mode (F9)",
+            text="⚡ Toggle Enhanced Mode (F9)",
             font=("Arial", 10, "bold"),
-            bg=self.button_color,
+            bg=self.enhanced_color,
             fg=self.fg_color,
             activebackground=self.button_hover,
             relief=tk.FLAT,
@@ -863,14 +1101,14 @@ class AutoClickerGUI:
         
         self.enhanced_status = tk.Label(
             enhanced_frame,
-            text="Status: Disabled",
+            text="Status: Enabled (DEFAULT)",
             font=("Arial", 9),
             bg=self.panel_color,
-            fg="#888888"
+            fg=self.enhanced_color
         )
         self.enhanced_status.pack(pady=5)
         
-        desc_text = "Enhanced mode adds burst/pause mechanics\nfor butterfly clicking simulation (1,500-2,500 variance)"
+        desc_text = "Enhanced mode adds burst/pause mechanics\nfor butterfly clicking simulation (1,500-2,500 variance)\n\n💡 This is now the DEFAULT mode!"
         tk.Label(
             mode_panel,
             text=desc_text,
@@ -878,64 +1116,32 @@ class AutoClickerGUI:
             bg=self.panel_color,
             fg="#888888",
             justify=tk.CENTER
-        ).pack(pady=(0, 15))
+        ).pack(pady=(0, 12))
         
-        # Training mode
-        training_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        training_panel.pack(fill=tk.X, pady=(0, 10))
+        # Note about training page
+        training_note_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        training_note_panel.pack(fill=tk.X, pady=(0, 8), padx=2)
         
         tk.Label(
-            training_panel,
-            text="Human Baseline Training",
+            training_note_panel,
+            text="🎯 Training Moved!",
             font=("Arial", 12, "bold"),
             bg=self.panel_color,
-            fg=self.fg_color
-        ).pack(pady=(15, 10))
+            fg=self.training_color
+        ).pack(pady=(12, 5))
         
-        training_btn_frame = tk.Frame(training_panel, bg=self.panel_color)
-        training_btn_frame.pack(pady=10)
-        
-        train_btn = tk.Button(
-            training_btn_frame,
-            text="Start Training (F7)",
-            font=("Arial", 10),
-            bg=self.training_color,
-            fg="white",
-            activebackground="#ff9500",
-            relief=tk.FLAT,
-            cursor="hand2",
-            command=self.toggle_training_mode,
-            width=18
-        )
-        train_btn.pack(side=tk.LEFT, padx=5)
-        
-        export_train_btn = tk.Button(
-            training_btn_frame,
-            text="Export Baseline (F8)",
-            font=("Arial", 10),
-            bg=self.button_color,
-            fg=self.fg_color,
-            activebackground=self.button_hover,
-            relief=tk.FLAT,
-            cursor="hand2",
-            command=self.export_human_baseline,
-            width=18
-        )
-        export_train_btn.pack(side=tk.LEFT, padx=5)
-        
-        train_desc = "Record your natural clicking to analyze variance\nand get personalized recommendations"
         tk.Label(
-            training_panel,
-            text=train_desc,
-            font=("Arial", 8),
+            training_note_panel,
+            text="Human baseline training has moved to the\ndedicated Training page (5th tab) →",
+            font=("Arial", 9),
             bg=self.panel_color,
             fg="#888888",
             justify=tk.CENTER
-        ).pack(pady=(0, 15))
+        ).pack(pady=(0, 12))
         
         # Controls reference
-        controls_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        controls_panel.pack(fill=tk.BOTH, expand=True)
+        controls_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        controls_panel.pack(fill=tk.X, padx=2)
         
         tk.Label(
             controls_panel,
@@ -943,10 +1149,10 @@ class AutoClickerGUI:
             font=("Arial", 11, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
         controls_grid = tk.Frame(controls_panel, bg=self.panel_color)
-        controls_grid.pack(pady=10)
+        controls_grid.pack(pady=8)
         
         controls = [
             ("F4", "Toggle On/Off"),
@@ -954,12 +1160,14 @@ class AutoClickerGUI:
             ("F5", "Export Stats"),
             ("← →", "Switch Pages"),
             ("Enter", "Quick Toggle"),
-            ("Esc", "Quick Disable")
+            ("F7", "Start/Stop Training"),
+            ("F8", "Export Baseline"),
+            ("F9", "Toggle Enhanced")
         ]
         
         for key, action in controls:
             row = tk.Frame(controls_grid, bg=self.panel_color)
-            row.pack(pady=3)
+            row.pack(pady=2)
             
             tk.Label(
                 row,
@@ -980,17 +1188,19 @@ class AutoClickerGUI:
                 anchor="w"
             ).pack(side=tk.LEFT)
         
-        tk.Label(controls_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(controls_panel, text="", bg=self.panel_color, height=1).pack()
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
     
     
     def create_page_analytics(self):
-        """Create Page 3: Analytics and session history"""
+        """Create Page 3: Analytics (same as v3.3)"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
-        # Current session metrics
         current_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        current_panel.pack(fill=tk.X, pady=(0, 10))
+        current_panel.pack(fill=tk.X, pady=(0, 8))
         
         tk.Label(
             current_panel,
@@ -998,19 +1208,18 @@ class AutoClickerGUI:
             font=("Arial", 12, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
         metrics_grid = tk.Frame(current_panel, bg=self.panel_color)
-        metrics_grid.pack(pady=10, padx=20)
+        metrics_grid.pack(pady=8, padx=20)
         
         self.create_metric_row(metrics_grid, "Detection Risk", "risk_level", 0)
         self.create_metric_row(metrics_grid, "Burst Events", "burst_events", 1)
         self.create_metric_row(metrics_grid, "Pause Events", "pause_events", 2)
         self.create_metric_row(metrics_grid, "Pattern Breaks", "pattern_breaks", 3)
         
-        tk.Label(current_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(current_panel, text="", bg=self.panel_color, height=1).pack()
         
-        # Session history
         history_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         history_panel.pack(fill=tk.BOTH, expand=True)
         
@@ -1020,70 +1229,73 @@ class AutoClickerGUI:
             font=("Arial", 11, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
         history_frame = tk.Frame(history_panel, bg=self.panel_color)
-        history_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        history_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=8)
+        
+        history_scrollbar = tk.Scrollbar(history_frame)
+        history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.history_text = tk.Text(
             history_frame,
-            height=10,
+            height=12,
             font=("Courier", 8),
             bg="#1a1a1a",
             fg="#cccccc",
             relief=tk.FLAT,
-            wrap=tk.WORD
+            wrap=tk.WORD,
+            yscrollcommand=history_scrollbar.set
         )
-        self.history_text.pack(fill=tk.BOTH, expand=True)
+        self.history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        history_scrollbar.config(command=self.history_text.yview)
         
         self.history_text.insert("1.0", "No sessions recorded yet.\nComplete a session to see analytics here.")
         self.history_text.config(state=tk.DISABLED)
         
-        tk.Label(history_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(history_panel, text="", bg=self.panel_color, height=1).pack()
     
     
     def create_page_histogram(self):
-        """Create Page 4: Histogram visualization"""
+        """Create Page 4: Histogram (same as v3.3)"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
-        # Histogram panel
         histogram_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
-        histogram_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        histogram_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
         
         tk.Label(
             histogram_panel,
             text="Click Delay Distribution",
-            font=("Arial", 13, "bold"),
+            font=("Arial", 12, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
-        ).pack(pady=(15, 10))
+        ).pack(pady=(12, 8))
         
-        # Create histogram canvas
-        self.histogram = HistogramCanvas(histogram_panel, width=460, height=300)
-        self.histogram.pack(pady=10, padx=10)
+        self.histogram = HistogramCanvas(histogram_panel, width=560, height=280)
+        self.histogram.pack(pady=8, padx=10)
         
-        # Legend
         legend_frame = tk.Frame(histogram_panel, bg=self.panel_color)
-        legend_frame.pack(pady=10)
+        legend_frame.pack(pady=8)
         
-        legend_items = [
-            ("●", "#4CAF50", "Optimal Range (84-143ms)"),
-            ("●", "#FFA500", "Acceptable Range"),
-            ("─", "#4CAF50", "Mean (μ)"),
-            ("┄", "#FFA500", "Std Dev (σ)")
+        legend_row1 = tk.Frame(legend_frame, bg=self.panel_color)
+        legend_row1.pack()
+        
+        legend_items_1 = [
+            ("●", "#4CAF50", "Optimal (84-143ms)"),
+            ("●", "#FFA500", "Acceptable")
         ]
         
-        for symbol, color, text in legend_items:
-            item = tk.Frame(legend_frame, bg=self.panel_color)
-            item.pack(side=tk.LEFT, padx=10)
+        for symbol, color, text in legend_items_1:
+            item = tk.Frame(legend_row1, bg=self.panel_color)
+            item.pack(side=tk.LEFT, padx=12)
             
             tk.Label(
                 item,
                 text=symbol,
                 fg=color,
                 bg=self.panel_color,
-                font=("Arial", 12, "bold")
+                font=("Arial", 11, "bold")
             ).pack(side=tk.LEFT)
             
             tk.Label(
@@ -1094,9 +1306,36 @@ class AutoClickerGUI:
                 font=("Arial", 8)
             ).pack(side=tk.LEFT, padx=3)
         
-        tk.Label(histogram_panel, text="", bg=self.panel_color).pack(pady=5)
+        legend_row2 = tk.Frame(legend_frame, bg=self.panel_color)
+        legend_row2.pack(pady=3)
         
-        # Statistics panel
+        legend_items_2 = [
+            ("─", "#4CAF50", "Mean (μ)"),
+            ("┄", "#FFA500", "Std Dev (σ)")
+        ]
+        
+        for symbol, color, text in legend_items_2:
+            item = tk.Frame(legend_row2, bg=self.panel_color)
+            item.pack(side=tk.LEFT, padx=12)
+            
+            tk.Label(
+                item,
+                text=symbol,
+                fg=color,
+                bg=self.panel_color,
+                font=("Arial", 11, "bold")
+            ).pack(side=tk.LEFT)
+            
+            tk.Label(
+                item,
+                text=text,
+                fg="#888888",
+                bg=self.panel_color,
+                font=("Arial", 8)
+            ).pack(side=tk.LEFT, padx=3)
+        
+        tk.Label(histogram_panel, text="", bg=self.panel_color, height=1).pack()
+        
         stats_info_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         stats_info_panel.pack(fill=tk.X)
         
@@ -1109,17 +1348,246 @@ class AutoClickerGUI:
         ).pack(pady=(10, 5))
         
         stats_info_grid = tk.Frame(stats_info_panel, bg=self.panel_color)
-        stats_info_grid.pack(pady=10, padx=20)
+        stats_info_grid.pack(pady=8, padx=20)
         
         self.create_metric_row(stats_info_grid, "Mean Delay", "hist_mean", 0)
         self.create_metric_row(stats_info_grid, "Std Deviation", "hist_std", 1)
-        self.create_metric_row(stats_info_grid, "Variance", "hist_variance", 2)
+        self.create_metric_row(stats_info_grid, "Variance (σ²)", "hist_variance", 2)
         
-        tk.Label(stats_info_panel, text="", bg=self.panel_color).pack(pady=5)
+        tk.Label(stats_info_panel, text="", bg=self.panel_color, height=1).pack()
     
     
+    # ═════════════════════════════════════════════════════════════════════════
+    # NEW PAGE 5: TRAINING
+    # ═════════════════════════════════════════════════════════════════════════
+    
+    def create_page_training(self):
+        """Create Page 5: Dedicated Training Page"""
+        page = tk.Frame(self.content_frame, bg=self.bg_color)
+        self.pages.append(page)
+        
+        # Title panel
+        title_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        title_panel.pack(fill=tk.X, pady=(0, 8))
+        
+        tk.Label(
+            title_panel,
+            text="🎯 Human Baseline Training",
+            font=("Arial", 13, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(12, 5))
+        
+        tk.Label(
+            title_panel,
+            text="Record your natural clicking patterns for AI analysis",
+            font=("Arial", 9),
+            bg=self.panel_color,
+            fg="#888888"
+        ).pack(pady=(0, 12))
+        
+        # Click type selector
+        selector_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        selector_panel.pack(fill=tk.X, pady=(0, 8))
+        
+        tk.Label(
+            selector_panel,
+            text="Select Click Type to Train",
+            font=("Arial", 11, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(12, 8))
+        
+        # Click type buttons
+        button_frame = tk.Frame(selector_panel, bg=self.panel_color)
+        button_frame.pack(pady=8)
+        
+        self.butterfly_btn = tk.Button(
+            button_frame,
+            text="🦋 Butterfly\n(2-finger alternate)",
+            font=("Arial", 9, "bold"),
+            bg=self.button_color,
+            fg=self.fg_color,
+            activebackground=self.button_hover,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=lambda: self.select_training_type("butterfly"),
+            width=18,
+            height=3
+        )
+        self.butterfly_btn.grid(row=0, column=0, padx=5, pady=5)
+        
+        self.jitter_btn = tk.Button(
+            button_frame,
+            text="⚡ Jitter\n(rapid wrist tension)",
+            font=("Arial", 9, "bold"),
+            bg=self.button_color,
+            fg=self.fg_color,
+            activebackground=self.button_hover,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=lambda: self.select_training_type("jitter"),
+            width=18,
+            height=3
+        )
+        self.jitter_btn.grid(row=0, column=1, padx=5, pady=5)
+        
+        self.normal_btn = tk.Button(
+            button_frame,
+            text="👆 Normal\n(single finger tap)",
+            font=("Arial", 9, "bold"),
+            bg=self.button_color,
+            fg=self.fg_color,
+            activebackground=self.button_hover,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=lambda: self.select_training_type("normal"),
+            width=18,
+            height=3
+        )
+        self.normal_btn.grid(row=0, column=2, padx=5, pady=5)
+        
+        self.training_type_label = tk.Label(
+            selector_panel,
+            text="No type selected",
+            font=("Arial", 10),
+            bg=self.panel_color,
+            fg="#888888"
+        )
+        self.training_type_label.pack(pady=(5, 12))
+        
+        # Training controls
+        controls_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        controls_panel.pack(fill=tk.X, pady=(0, 8))
+        
+        tk.Label(
+            controls_panel,
+            text="Training Controls",
+            font=("Arial", 11, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(12, 8))
+        
+        training_btn_frame = tk.Frame(controls_panel, bg=self.panel_color)
+        training_btn_frame.pack(pady=8)
+        
+        self.train_start_btn = tk.Button(
+            training_btn_frame,
+            text="🎬 Start Training (F7)",
+            font=("Arial", 10, "bold"),
+            bg=self.training_color,
+            fg="white",
+            activebackground="#ff9500",
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.toggle_training_mode,
+            width=20
+        )
+        self.train_start_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.train_export_btn = tk.Button(
+            training_btn_frame,
+            text="💾 Export Data (F8)",
+            font=("Arial", 10),
+            bg=self.button_color,
+            fg=self.fg_color,
+            activebackground=self.button_hover,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.export_human_baseline,
+            width=20
+        )
+        self.train_export_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Training status
+        self.training_status_label = tk.Label(
+            controls_panel,
+            text="Inactive - Select a click type above",
+            font=("Arial", 9),
+            bg=self.panel_color,
+            fg="#888888"
+        )
+        self.training_status_label.pack(pady=(5, 12))
+        
+        # Info panel
+        info_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        info_panel.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(
+            info_panel,
+            text="📁 File Organization",
+            font=("Arial", 11, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(12, 8))
+        
+        info_text = """Files will be saved to:
+
+training_data/
+  ├── butterfly/
+  │   └── butterfly_baseline_YYYYMMDD_HHMMSS.txt
+  ├── jitter/
+  │   └── jitter_baseline_YYYYMMDD_HHMMSS.txt
+  ├── normal/
+  │   └── normal_baseline_YYYYMMDD_HHMMSS.txt
+  └── mixed/
+
+💡 Tips:
+• Train each click type separately
+• Click naturally for 30+ seconds
+• Aim for 50-100 clicks per session
+• Export immediately after training"""
+        
+        tk.Label(
+            info_panel,
+            text=info_text,
+            font=("Courier", 8),
+            bg=self.panel_color,
+            fg="#cccccc",
+            justify=tk.LEFT
+        ).pack(pady=(0, 12))
+    
+    
+    def select_training_type(self, training_type):
+        """Select training type for session"""
+        # Reset all button colors
+        self.butterfly_btn.config(bg=self.button_color)
+        self.jitter_btn.config(bg=self.button_color)
+        self.normal_btn.config(bg=self.button_color)
+        
+        # Highlight selected
+        if training_type == "butterfly":
+            self.butterfly_btn.config(bg=self.training_color)
+            self.training_type_label.config(
+                text="Selected: Butterfly (2-finger alternating)",
+                fg=self.training_color
+            )
+        elif training_type == "jitter":
+            self.jitter_btn.config(bg=self.training_color)
+            self.training_type_label.config(
+                text="Selected: Jitter (rapid wrist tension)",
+                fg=self.training_color
+            )
+        elif training_type == "normal":
+            self.normal_btn.config(bg=self.training_color)
+            self.training_type_label.config(
+                text="Selected: Normal (single finger tap)",
+                fg=self.training_color
+            )
+        
+        # Store selection
+        self.selected_training_types = [training_type]
+        
+        # Update status
+        if not self.human_tracker.is_tracking:
+            self.training_status_label.config(
+                text=f"Ready to train {training_type.upper()} - Press F7 to start",
+                fg=self.training_color
+            )
+    
+    
+    # Helper methods (same patterns as before)
     def create_stat_row(self, parent, label_text, var_name, row):
-        """Create a statistic row for dashboard"""
         label = tk.Label(
             parent,
             text=f"{label_text}:",
@@ -1128,7 +1596,7 @@ class AutoClickerGUI:
             fg="#cccccc",
             anchor="w"
         )
-        label.grid(row=row, column=0, pady=8, padx=10, sticky="w")
+        label.grid(row=row, column=0, pady=6, padx=10, sticky="w")
         
         value = tk.Label(
             parent,
@@ -1138,16 +1606,14 @@ class AutoClickerGUI:
             fg=self.accent_color,
             anchor="e"
         )
-        value.grid(row=row, column=1, pady=8, padx=10, sticky="e")
+        value.grid(row=row, column=1, pady=6, padx=10, sticky="e")
         
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=1)
         
         setattr(self, var_name, value)
     
-    
     def create_metric_row(self, parent, label_text, var_name, row):
-        """Create a metric row for analytics"""
         label = tk.Label(
             parent,
             text=f"{label_text}:",
@@ -1157,7 +1623,7 @@ class AutoClickerGUI:
             anchor="w",
             width=18
         )
-        label.grid(row=row, column=0, pady=6, padx=10, sticky="w")
+        label.grid(row=row, column=0, pady=5, padx=10, sticky="w")
         
         value = tk.Label(
             parent,
@@ -1168,7 +1634,7 @@ class AutoClickerGUI:
             anchor="e",
             width=15
         )
-        value.grid(row=row, column=1, pady=6, padx=10, sticky="e")
+        value.grid(row=row, column=1, pady=5, padx=10, sticky="e")
         
         setattr(self, var_name, value)
     
@@ -1194,12 +1660,10 @@ class AutoClickerGUI:
         self.prev_btn.config(state=tk.NORMAL if page_idx > 0 else tk.DISABLED)
         self.next_btn.config(state=tk.NORMAL if page_idx < len(self.pages) - 1 else tk.DISABLED)
         
-        # Update histogram when switching to it
         if page_idx == 3 and self.engine and len(self.engine.all_delays) >= 5:
             mean = sum(self.engine.all_delays) / len(self.engine.all_delays)
             std_dev = self.engine.calculate_std_dev()
             self.histogram.draw_histogram(self.engine.all_delays, mean, std_dev, self.enhanced_mode)
-    
     
     def next_page(self):
         if self.current_page < len(self.pages) - 1:
@@ -1214,18 +1678,12 @@ class AutoClickerGUI:
         """Register keyboard hotkeys"""
         keyboard.add_hotkey('f4', self.toggle_active)
         keyboard.add_hotkey('enter', self.toggle_active)
-        keyboard.add_hotkey('escape', self.quick_disable)
         keyboard.add_hotkey('f5', self.export_stats)
         keyboard.add_hotkey('f7', self.toggle_training_mode)
         keyboard.add_hotkey('f8', self.export_human_baseline)
         keyboard.add_hotkey('f9', self.toggle_enhanced_mode)
         keyboard.add_hotkey('left', self.prev_page)
         keyboard.add_hotkey('right', self.next_page)
-    
-    
-    def quick_disable(self):
-        if self.active:
-            self.toggle_active()
     
     
     def format_time_elapsed(self, seconds):
@@ -1247,7 +1705,7 @@ class AutoClickerGUI:
         
         if self.enhanced_mode:
             self.mode_indicator.config(text="⚡ Enhanced Chaos Mode", fg=self.enhanced_color)
-            self.enhanced_status.config(text="Status: Enabled", fg=self.enhanced_color)
+            self.enhanced_status.config(text="Status: Enabled (DEFAULT)", fg=self.enhanced_color)
             self.enhanced_btn.config(bg=self.enhanced_color)
             print("\n[ENHANCED MODE] Activated!\n")
         else:
@@ -1327,28 +1785,55 @@ class AutoClickerGUI:
     
     
     def toggle_training_mode(self):
+        """Toggle training mode with selected click type"""
         if self.active:
             print("\n[!] Disable auto-clicker before training!\n")
             return
         
         if not self.human_tracker.is_tracking:
-            self.human_tracker.start_tracking()
-            self.status_indicator.config(text="● TRAINING MODE", fg=self.training_color)
-            self.click_status.config(text="Click naturally - Recording patterns", fg=self.training_color)
+            # Check if training type is selected
+            if not self.selected_training_types:
+                messagebox.showwarning(
+                    "No Click Type Selected",
+                    "Please select a click type (Butterfly/Jitter/Normal) before starting training!"
+                )
+                return
+            
+            training_type = self.selected_training_types[0]
+            self.human_tracker.start_tracking(training_type)
+            self.status_indicator.config(text=f"● TRAINING: {training_type.upper()}", fg=self.training_color)
+            self.click_status.config(text=f"Recording {training_type} clicks...", fg=self.training_color)
+            self.training_status_label.config(
+                text=f"🔴 RECORDING {training_type.upper()} - Click naturally!",
+                fg=self.inactive_color
+            )
+            self.train_start_btn.config(text="⏹️ Stop Training (F7)", bg=self.inactive_color)
         else:
             self.human_tracker.stop_tracking()
             self.status_indicator.config(text="● INACTIVE", fg=self.inactive_color)
             self.click_status.config(text="Training complete - Press F8 to export", fg="#888888")
+            training_type = self.human_tracker.training_type
+            self.training_status_label.config(
+                text=f"✅ Training complete - {self.human_tracker.total_clicks} {training_type} clicks recorded",
+                fg=self.accent_color
+            )
+            self.train_start_btn.config(text="🎬 Start Training (F7)", bg=self.training_color)
     
     
     def export_human_baseline(self):
+        """Export human baseline analysis"""
         if self.human_tracker.is_tracking:
-            print("\n[!] Stop training mode before exporting!\n")
+            messagebox.showinfo(
+                "Training In Progress",
+                "Stop training (F7) before exporting!"
+            )
             return
-        print("\n[!] Export feature simplified for demo\n")
+        
+        self.human_tracker.export_human_stats()
     
     
     def export_stats(self):
+        """Export stats (shortened for space)"""
         if not self.last_session_stats:
             print("\n[!] No session data available!\n")
             return
@@ -1358,24 +1843,23 @@ class AutoClickerGUI:
         
         report = f"""
 ======================================================================
-SESSION REPORT
+SESSION REPORT - {mode_text}
 ======================================================================
-Mode: {mode_text}
-Clicks: {stats['total']}
-Avg CPS: {stats['avg_cps']:.2f}
-Variance: {int(stats['variance'])}
-Risk: {"LOW" if stats['variance'] > 250 else "MEDIUM" if stats['variance'] > 120 else "HIGH"}
+Total Clicks: {stats['total']}
+Average CPS: {stats['avg_cps']:.2f}
+Variance: {stats['variance']:.0f}
 ======================================================================
 """
         print(report)
         
-        filename = f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        mode_suffix = "_enhanced" if stats.get('enhanced_mode', False) else "_standard"
+        filename = f"clicker_stats{mode_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         try:
             with open(filename, 'w') as f:
                 f.write(report)
             print(f"[SUCCESS] Exported to: {filename}\n")
-        except:
-            print("[ERROR] Could not save file\n")
+        except Exception as e:
+            print(f"[ERROR] Could not save: {e}\n")
     
     
     def is_mb5_held(self):
@@ -1419,7 +1903,7 @@ Risk: {"LOW" if stats['variance'] > 250 else "MEDIUM" if stats['variance'] > 120
     
     
     def update_display(self):
-        """Update GUI with current statistics and histogram"""
+        """Update GUI (same logic as v3.3)"""
         if self.active and self.engine:
             if self.clicking:
                 self.click_status.config(text="⚔️ CLICKING", fg=self.accent_color)
@@ -1439,7 +1923,6 @@ Risk: {"LOW" if stats['variance'] > 250 else "MEDIUM" if stats['variance'] > 120
                 if stats:
                     self.session_cps.config(text=f"{stats['avg_cps']:.2f}")
                     
-                    # Update analytics
                     if stats['variance'] > 250 and stats['max_cps'] <= 12:
                         risk = "LOW"
                         risk_color = self.accent_color
@@ -1455,14 +1938,12 @@ Risk: {"LOW" if stats['variance'] > 250 else "MEDIUM" if stats['variance'] > 120
                     self.pause_events.config(text=str(stats.get('pause_count', 0)))
                     self.pattern_breaks.config(text=str(stats['pattern_breaks']))
                     
-                    # Update histogram stats
                     mean = sum(self.engine.all_delays) / len(self.engine.all_delays)
                     std_dev = self.engine.calculate_std_dev()
                     self.hist_mean.config(text=f"{mean:.1f} ms")
                     self.hist_std.config(text=f"{std_dev:.1f} ms")
                     self.hist_variance.config(text=f"{int(variance)}")
                     
-                    # Update histogram if on that page
                     if self.current_page == 3 and len(self.engine.all_delays) >= 5:
                         self.histogram.draw_histogram(self.engine.all_delays, mean, std_dev, self.enhanced_mode)
             else:
@@ -1498,7 +1979,7 @@ Risk: {"LOW" if stats['variance'] > 250 else "MEDIUM" if stats['variance'] > 120
             self.hist_std.config(text="--")
             self.hist_variance.config(text="--")
         
-        self.root.after(500, self.update_display)  # Update histogram every 500ms
+        self.root.after(500, self.update_display)
     
     
     def start_threads(self):
@@ -1530,6 +2011,7 @@ if __name__ == "__main__":
         
         if not is_admin:
             print("\n⚠️  ERROR: Need Administrator privileges")
+            print("Right-click Command Prompt → 'Run as Administrator'\n")
             input("Press Enter to exit...")
             exit(1)
         
