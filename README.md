@@ -1,6 +1,6 @@
 # Undetectable Auto Clicker
 
-> **Closet Cheat** | **7-12 CPS Range**
+> **Tested on MMC** | **7-12 CPS Range**
 
 A sophisticated auto-clicker designed specifically for Minecraft PvP that mimics human clicking patterns to remain undetectable by anti-cheat systems. Built with advanced statistical algorithms and real-time monitoring.
 
@@ -212,6 +212,6 @@ Need help?
 
 ---
 
-**Made for competitive Minecraft PvP** | **Stay safe, click smart** 🎮⚔️
+**Made for competitive Minecraft PvP**
 
 *Last Updated: December 18, 2025*
