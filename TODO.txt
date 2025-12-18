@@ -2,7 +2,7 @@
 
 ## Immediate TODOs (v3.6)
 NEED TO ADD BETTER / MORE GRANULAR RISK LEVELS THAT ARE REALISTIC PERHAPS IT SHOULD BE A PERCENTILE RANGE. VALUE COLOR CHANGES DEPENDING ON RISK LEVEL (GREEN, YELLOW, ORANGE RED ETC) THEYRE TOO LOW NEED TO BE HIGHER!!!!
-
+ Session comparison full data extraction - Works but could pull from actual CSV files for deeper analysis
 ### 1. **Training Data Session History**
 ```python
 # New page: "Training History" (Page 6)
@@ -466,4 +466,5 @@ ALSO NEED TO ADD BETTER / MORE GRANULAR RISK LEVELS THAT ARE REALISTIC PERHAPS I
 **Your differential analysis page will be KEY** - it'll show exactly where the bot differs from real human data, and you can iteratively improve the algorithms until they're statistically indistinguishable.
 
 ***
+
 
