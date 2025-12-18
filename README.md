@@ -118,10 +118,10 @@ Note: I exclusively run this tool through Command Prompt with Admin perms. Find 
 1. Navigate to **Training** page (page 5)
 2. Select click type: **Butterfly** / **Jitter** / **Normal**
 3. Press **F7** to start recording
-4. Click naturally (aim for 100+ clicks)
-   - Minimum: 100 clicks
-   - Recommended: 200 clicks
-   - Complete: 250+ clicks
+4. Click naturally using only the selected click type as your clicking technique
+   - Minimum: 150 clicks
+   - Recommended: 250 clicks
+   - Complete: >= 350 clicks
 5. Press **F7** to stop recording
 6. Press **F8** to export training data
 
@@ -149,8 +149,7 @@ Note: I exclusively run this tool through Command Prompt with Admin perms. Find 
 
 ### ⚠️ HIGH RISK
 - Variance < 120
-- Too consistent
-- Enable Enhanced Mode (F9)
+- Too consistent, report to Dev immediately and do not continute using the clicker
 
 ---
 
