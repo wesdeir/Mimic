@@ -45,25 +45,25 @@ A sophisticated auto-clicker designed and tested on MMC, featuring advanced anti
 
 All exports save to `Desktop/training_data/`:
 
-Desktop/
-└── training_data/
-├── clickerData/ ← Auto-clicker session data (F5/F6)
-│ ├── clicker_stats_enhanced_YYYYMMDD_HHMMSS.txt
-│ └── clicker_data_enhanced_YYYYMMDD_HHMMSS.csv
-│
-├── butterfly/ ← Human training data (F8)
-│ ├── butterfly_baseline_YYYYMMDD_HHMMSS.txt
-│ └── butterfly_baseline_YYYYMMDD_HHMMSS.csv
-│
-├── jitter/ ← Human training data (F8)
-│ ├── jitter_baseline_YYYYMMDD_HHMMSS.txt
-│ └── jitter_baseline_YYYYMMDD_HHMMSS.csv
-│
-├── normal/ ← Human training data (F8)
-│ ├── normal_baseline_YYYYMMDD_HHMMSS.txt
-│ └── normal_baseline_YYYYMMDD_HHMMSS.csv
-│
-└── mixed/ ← Mixed technique training (F8)
+Desktop/ <br>
+└── training_data/ <br>
+├── clickerData/ ← Auto-clicker session data (F5/F6) <br>
+│ ├── clicker_stats_enhanced_YYYYMMDD_HHMMSS.txt <br>
+│ └── clicker_data_enhanced_YYYYMMDD_HHMMSS.csv <br>
+│ <br>
+├── butterfly/ ← Human training data (F8) <br>
+│ ├── butterfly_baseline_YYYYMMDD_HHMMSS.txt <br>
+│ └── butterfly_baseline_YYYYMMDD_HHMMSS.csv <br>
+│ <br>
+├── jitter/ ← Human training data (F8) <br>
+│ ├── jitter_baseline_YYYYMMDD_HHMMSS.txt <br>
+│ └── jitter_baseline_YYYYMMDD_HHMMSS.csv <br>
+│ <br>
+├── normal/ ← Human training data (F8) <br>
+│ ├── normal_baseline_YYYYMMDD_HHMMSS.txt <br>
+│ └── normal_baseline_YYYYMMDD_HHMMSS.csv <br>
+│ <br>
+└── mixed/ ← Mixed technique training (F8) <br>
 
 ---
 
