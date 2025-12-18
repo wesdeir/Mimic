@@ -65,8 +65,6 @@ Desktop/
 │
 └── mixed/ ← Mixed technique training (F8)
 
-text
-
 ---
 
 ## Keyboard Controls
