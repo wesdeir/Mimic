@@ -1,6 +1,7 @@
-# 📋 TODO List - Future Features & Anti-Cheat Innovations
+# TODO List - Future Features & Anti-Cheat Innovations
 
-## 🎯 Immediate TODOs (v3.6)
+## Immediate TODOs (v3.6)
+NEED TO ADD BETTER / MORE GRANULAR RISK LEVELS THAT ARE REALISTIC PERHAPS IT SHOULD BE A PERCENTILE RANGE. VALUE COLOR CHANGES DEPENDING ON RISK LEVEL (GREEN, YELLOW, ORANGE RED ETC) THEYRE TOO LOW NEED TO BE HIGHER!!!!
 
 ### 1. **Training Data Session History**
 ```python
@@ -73,7 +74,7 @@ Features:
 
 ***
 
-## 🔬 Advanced Anti-Cheat Evasion Techniques
+## Advanced Anti-Cheat Evasion Techniques
 
 ### **A. Mouse Movement Integration** ⭐⭐⭐
 ```python
@@ -223,7 +224,7 @@ Note: Advanced servers correlate client timing
 
 ***
 
-## 🎮 Minecraft-Specific Evasion
+## Minecraft-Specific Evasion
 
 ### **J. Knockback Pattern Matching**
 ```python
@@ -323,7 +324,7 @@ Shows:
 
 ***
 
-## 🛡️ Ultimate Anti-Cheat Hardening
+## Ultimate Anti-Cheat Hardening
 
 ### **P. Multi-Layer Randomization**
 ```python
@@ -361,7 +362,7 @@ Features:
 
 ***
 
-## 🎯 Priority Rankings
+## Priority Rankings
 
 ### **CRITICAL (Implement First)**
 1. **Mouse Movement Integration** - Most detectable
@@ -386,7 +387,7 @@ Features:
 
 ***
 
-## 🔬 Research Ideas
+## Research Ideas
 
 ### **S. Study Real Anti-Cheat Systems**
 - Decompile Hypixel Watchdog (if legal)
@@ -407,7 +408,7 @@ Features:
 
 ***
 
-## 📝 Implementation Checklist for v3.6
+## Implementation Checklist for v3.6
 
 ```markdown
 v3.6 Roadmap:
@@ -435,7 +436,7 @@ v4.0 (Future):
 
 ***
 
-## 🎓 Learning Resources
+## Learning Resources
 
 ### **Read About:**
 - "Turing Test for Gaming" - ACM papers
@@ -451,7 +452,7 @@ v4.0 (Future):
 
 ***
 
-## 💡 Final Thoughts
+## Final Thoughts
 
 The **holy grail** of undetectable auto-clicking:
 1. **Variance that matches YOUR personal clicking data**
@@ -460,8 +461,9 @@ The **holy grail** of undetectable auto-clicking:
 4. **Context awareness** (PvP vs mining vs building)
 5. **Multi-input timing** (keyboard + mouse coordination)
 
+ALSO NEED TO ADD BETTER / MORE GRANULAR RISK LEVELS THAT ARE REALISTIC PERHAPS IT SHOULD BE A PERCENTILE RANGE. VALUE COLOR CHANGES DEPENDING ON RISK LEVEL (GREEN, YELLOW, ORANGE RED ETC) THEYRE TOO LOW NEED TO BE HIGHER!!!!
+
 **Your differential analysis page will be KEY** - it'll show exactly where the bot differs from real human data, and you can iteratively improve the algorithms until they're statistically indistinguishable.
 
 ***
 
-Would you like me to implement any of these features now, or save them for v3.6+? The **differential analysis page** and **training session history** would be great additions! 🚀
