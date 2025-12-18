@@ -6,12 +6,12 @@ Version: 3.5.1 FINAL - Production Ready
 Target: 7-12 CPS range with human-like variance
 
 Updates in v3.5.1 FINAL:
-  ✅ Fixed UTF-8 encoding for all file exports (fixes export error)
-  ✅ Updated training thresholds: 100 min / 200 recommended / 250+ complete
-  ✅ Clicker session exports to Desktop/training_data/clickerData/
-  ✅ Training data exports to Desktop/training_data/{butterfly|jitter|normal}/
-  ✅ Fixed header text cutoff
-  ✅ All logic validated and complete
+  - Fixed UTF-8 encoding for all file exports (fixes export error)
+  - Updated training thresholds: 100 min / 200 recommended / 250+ complete
+  - Clicker session exports to Desktop/training_data/clickerData/
+  - Training data exports to Desktop/training_data/{butterfly|jitter|normal}/
+  - Fixed header text cutoff
+  - All logic validated and complete
   
 File Organization:
   training_data/
@@ -85,9 +85,9 @@ class Config:
     VK_LBUTTON = 0x01   # Left mouse button
     
     # Training Thresholds
-    TRAINING_MIN_CLICKS = 100
-    TRAINING_RECOMMENDED_CLICKS = 200
-    TRAINING_COMPLETE_CLICKS = 250
+    TRAINING_MIN_CLICKS = 150
+    TRAINING_RECOMMENDED_CLICKS = 250
+    TRAINING_COMPLETE_CLICKS = 350
     
     # File Organization - DESKTOP PATHS
     @staticmethod
@@ -119,10 +119,10 @@ class ClickerEngine:
         self.recent_click_times = deque(maxlen=20)
         self.all_delays = []
         
-        # ✅ VALIDATED: User baseline randomization
+        # VALIDATED: User baseline randomization
         self.user_baseline = random.uniform(0.88, 1.12)
         
-        # ✅ VALIDATED: Rhythm and drift tracking
+        # VALIDATED: Rhythm and drift tracking
         self.rhythm_phase = 0.0
         self.drift = 0.0
         
@@ -130,18 +130,18 @@ class ClickerEngine:
         self.variance_adjustment = 0.15
         self.last_variance_check = datetime.now()
         
-        # ✅ VALIDATED: Pattern detection counters
+        # VALIDATED: Pattern detection counters
         self.pattern_breaks = 0
         self.variance_adjustments = 0
         
-        # ✅ VALIDATED: Enhanced mode mechanics
+        # VALIDATED: Enhanced mode mechanics
         self.in_burst_mode = False
         self.burst_clicks_remaining = 0
         self.pause_until = None
         self.burst_count = 0
         self.pause_count = 0
         
-        # ✅ VALIDATED: Active time tracking
+        # VALIDATED: Active time tracking
         self.total_clicking_time = 0.0
         self.click_session_start = None
         self.is_actively_clicking = False
@@ -308,16 +308,16 @@ class ClickerEngine:
             else:
                 base = self.weibull_random(100, 2.2)
         
-        # ✅ VALIDATED: User baseline multiplier (0.88-1.12x)
+        # VALIDATED: User baseline multiplier (0.88-1.12x)
         base *= self.user_baseline
         
-        # ✅ VALIDATED: Enhanced mode has wider variance range
+        # VALIDATED: Enhanced mode has wider variance range
         if self.enhanced_mode:
             base *= random.uniform(0.75, 1.25)
         else:
             base *= random.uniform(0.80, 1.20)
         
-        # ✅ VALIDATED: Consecutive click fatigue
+        # VALIDATED: Consecutive click fatigue
         if self.consecutive_clicks < 3:
             base *= random.uniform(1.05, 1.20)
         elif self.consecutive_clicks < 8:
@@ -325,32 +325,32 @@ class ClickerEngine:
         else:
             base *= random.uniform(0.88, 0.98)
         
-        # ✅ VALIDATED: Drift accumulation (±0.35 max enhanced, ±0.25 standard)
+        # VALIDATED: Drift accumulation (±0.35 max enhanced, ±0.25 standard)
         drift_amount = 0.008 if self.enhanced_mode else 0.005
         self.drift += random.uniform(-drift_amount, drift_amount)
         drift_limit = 0.35 if self.enhanced_mode else 0.25
         self.drift = max(-drift_limit, min(drift_limit, self.drift))
         base *= (1.0 + self.drift)
         
-        # ✅ VALIDATED: Rhythm oscillation (sine wave)
+        # VALIDATED: Rhythm oscillation (sine wave)
         self.rhythm_phase = (self.rhythm_phase + random.uniform(0.20, 0.60)) % (2 * math.pi)
         rhythm_amount = 22 if self.enhanced_mode else 18
         base += math.sin(self.rhythm_phase) * rhythm_amount
         
-        # ✅ VALIDATED: Variance adjustment multiplier
+        # VALIDATED: Variance adjustment multiplier
         base *= (1.0 + self.variance_adjustment)
         
-        # ✅ VALIDATED: Random noise injection (±28ms enhanced, ±22ms standard)
+        # VALIDATED: Random noise injection (±28ms enhanced, ±22ms standard)
         noise_range = 28 if self.enhanced_mode else 22
         base += random.randint(-noise_range, noise_range + 1)
         
-        # ✅ VALIDATED: Clamp to safe limits
+        # VALIDATED: Clamp to safe limits
         if self.enhanced_mode:
             final = max(Config.ABSOLUTE_MIN_DELAY_MS, min(Config.ENHANCED_MAX_DELAY_MS, base))
         else:
             final = max(Config.ABSOLUTE_MIN_DELAY_MS, min(Config.ABSOLUTE_MAX_DELAY_MS, base))
         
-        # ✅ VALIDATED: Pattern break detection (20-click window)
+        # VALIDATED: Pattern break detection (20-click window)
         if len(self.click_history) >= Config.PATTERN_CHECK_WINDOW:
             recent = list(self.click_history)[-Config.PATTERN_CHECK_WINDOW:]
             mean = sum(recent) / len(recent)
@@ -385,7 +385,7 @@ class ClickerEngine:
         # Calculate delay
         delay_ms = self.calculate_delay()
         
-        # ✅ VALIDATED: Mouse button press with realistic hold time
+        # VALIDATED: Mouse button press with realistic hold time
         pressure_ms = abs(self.gaussian_random(26, 8))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         time.sleep(pressure_ms / 1000.0)
@@ -421,7 +421,7 @@ class ClickerEngine:
         avg_delay = sum(delays) / len(delays)
         sorted_delays = sorted(delays)
         
-        # ✅ VALIDATED: Percentile calculations
+        # VALIDATED: Percentile calculations
         p10 = sorted_delays[int(len(sorted_delays) * 0.10)]
         p50 = sorted_delays[int(len(sorted_delays) * 0.50)]
         p90 = sorted_delays[int(len(sorted_delays) * 0.90)]
@@ -1111,7 +1111,7 @@ class AutoClickerGUI:
         
         subtitle = tk.Label(
             header_frame,
-            text="Anti-Cheat Compliant • 7-12 CPS • Production Ready",
+            text="Undetectable • 7-12 CPS",
             font=("Arial", 8),
             bg=self.header_color,
             fg="#888888"
@@ -1741,7 +1741,7 @@ Folder Structure:
     
     
     def create_page_training(self):
-        """✅ UPDATED: Training page with 100/200/250 thresholds"""
+        """✅ UPDATED: Training page with 150/250/350 thresholds"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
@@ -2262,13 +2262,11 @@ RECOMMENDATIONS
         if risk == "HIGH":
             report += """⚠️  HIGH RISK DETECTED
    - Variance too low (too consistent)
-   - Consider enabling Enhanced Chaos Mode (F9)
    - May trigger anti-cheat pattern detection
 """
         elif risk == "MEDIUM":
             report += """⚡ MODERATE RISK
    - Variance acceptable but could be improved
-   - Enhanced mode recommended for better safety
    - Monitor for pattern detection
 """
         else:
@@ -2507,7 +2505,7 @@ Folder structure:
             self.variance_card.config(text="--")
             self.avg_cps_card.config(text="--")
             
-            # ✅ UPDATED: Training progress with 100/200/250 thresholds
+            # UPDATED: Training progress with 150/250/350 thresholds
             clicks = self.human_tracker.total_clicks
             if clicks < Config.TRAINING_MIN_CLICKS:
                 progress = f"Progress: {clicks}/{Config.TRAINING_MIN_CLICKS} minimum"
@@ -2588,7 +2586,7 @@ if __name__ == "__main__":
         print("═" * 70)
         print("\n✅ All logic validated and complete")
         print("✅ UTF-8 encoding fixed (export error resolved)")
-        print("✅ Training thresholds: 100 min / 200 recommended / 250 complete")
+        print("✅ Training thresholds: 150 min / 250 recommended / 350 complete")
         print("✅ Desktop path: Desktop/training_data/")
         print("✅ Clicker exports: Desktop/training_data/clickerData/")
         print("✅ Training exports: Desktop/training_data/{butterfly|jitter|normal}/")
@@ -2606,3 +2604,4 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         input("\nPress Enter to exit...")
+
