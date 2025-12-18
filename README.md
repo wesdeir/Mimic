@@ -1,6 +1,6 @@
-# Minecraft Auto Clicker
+# Auto Clicker
 
-> **Anti-Cheat Compliant** | **Human-Like Clicking** | **7-12 CPS Range**
+> **Ghost Client** | **7-12 CPS Range**
 
 A sophisticated auto-clicker designed specifically for Minecraft PvP that mimics human clicking patterns to remain undetectable by anti-cheat systems. Built with advanced statistical algorithms and real-time monitoring.
 
