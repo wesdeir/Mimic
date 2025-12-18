@@ -1,35 +1,35 @@
-# ⚔️ Minecraft Auto Clicker v3.5.1 FINAL
+# ⚔️ Minecraft Auto Clicker v3.5.1
 
-## 🎯 Production-Ready Anti-Cheat Compliant Auto Clicker
+## Anti-Cheat Compliant Auto Clicker
 
-A sophisticated auto-clicker designed specifically for Minecraft PvP, featuring advanced anti-detection algorithms, human-like clicking patterns, and comprehensive analytics.
+A sophisticated auto-clicker designed and tested on MMC, featuring advanced anti-detection algorithms and threshholds derived from legit clicking data-analysis via Training Mode.
 
 ---
 
-## ✨ Features
+## Features
 
-### 🔧 Core Functionality
+### Core Functionality
 - **7-12 CPS Range**: Optimized for Minecraft anti-cheat compliance
 - **Enhanced Chaos Mode**: Butterfly clicking simulation with burst/pause mechanics
 - **Standard Mode**: Jitter/normal clicking with controlled variance
 - **Real-time CPS Monitoring**: Live performance tracking
 - **Smart Variance Control**: Dynamic pattern breaking every 10 seconds
 
-### 🎨 User Interface
+### User Interface
 - **5-Page Dashboard**: Dashboard, Settings, Analytics, Graphs, Training
 - **Quick Stats Cards**: Total clicks, CPS, variance, risk level
 - **Real-time CPS Graph**: 30-second rolling window visualization
 - **Click Delay Histogram**: Distribution analysis with danger zones
 - **Session History**: Track performance across multiple sessions
 
-### 📊 Analytics & Export
+### Analytics & Export
 - **Detailed TXT Reports**: Comprehensive session statistics
 - **CSV Data Export**: Raw click data for analysis/AI training
 - **Training Mode**: Record human clicking patterns (butterfly/jitter/normal)
 - **Risk Assessment**: LOW/MEDIUM/HIGH detection risk ratings
 - **Desktop Organization**: Auto-organized folder structure
 
-### 🧠 Anti-Detection Technology
+### Anti-Detection Technology
 - **Gaussian + Weibull Distributions**: Natural timing variation
 - **User Baseline Randomization**: 0.88-1.12x multiplier
 - **Drift Accumulation**: ±0.35 max variance shift
@@ -41,7 +41,7 @@ A sophisticated auto-clicker designed specifically for Minecraft PvP, featuring 
 
 ---
 
-## 📁 File Organization
+## File Organization
 
 All exports save to `Desktop/training_data/`:
 
@@ -69,7 +69,7 @@ text
 
 ---
 
-## ⌨️ Keyboard Controls
+## Keyboard Controls
 
 | Key      | Action                          |
 |----------|---------------------------------|
@@ -84,9 +84,11 @@ text
 | **F10**  | Mini-mode (coming in v3.6)      |
 | **← →**  | Navigate pages                  |
 
+Note: F6 by default is a conflict keybind in Minecraft. Change or disable this keybind on your Minecraft instance to avoid overlap. 
+Note: Future plans include a keybind wizard built into the GUI. Mini-mode may not be a feature that we implement at all.
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -103,16 +105,16 @@ text
 
 ---
 
-## 📖 Usage Guide
+## Usage Guide
 
-### 1️⃣ Auto-Clicker Mode
+### 1️. Auto-Clicker Mode
 1. Press **F4** to activate
 2. Hold **MB5** (side mouse button) to click
 3. Monitor stats on Dashboard
 4. Press **F5** to export session report
 5. Press **F6** to export CSV data
 
-### 2️⃣ Training Mode (Human Baseline)
+### 2️. Training Mode (Human Baseline)
 1. Navigate to **Training** page (page 5)
 2. Select click type: **Butterfly** / **Jitter** / **Normal**
 3. Press **F7** to start recording
@@ -123,7 +125,7 @@ text
 5. Press **F7** to stop recording
 6. Press **F8** to export training data
 
-### 3️⃣ Analytics Review
+### 3️. Analytics Review
 - **Page 1 (Dashboard)**: Quick stats overview
 - **Page 2 (Settings)**: Mode controls and hotkeys
 - **Page 3 (Analytics)**: Session metrics and history
@@ -132,15 +134,15 @@ text
 
 ---
 
-## 🔍 Understanding Risk Levels
+## Understanding Risk Levels
 
-### ✅ LOW RISK
+### LOW RISK
 - Variance > 250
 - Max CPS ≤ 12
 - High randomness
 - Anti-cheat compliant
 
-### ⚡ MEDIUM RISK
+### MEDIUM RISK
 - Variance 120-250
 - Acceptable variation
 - Monitor performance
@@ -152,7 +154,7 @@ text
 
 ---
 
-## 🧪 Training Data for AI
+## Training Data for AI
 
 ### Purpose
 Record human clicking patterns to train AI models that can distinguish between:
@@ -165,15 +167,21 @@ Record human clicking patterns to train AI models that can distinguish between:
 3. **Normal**: 100+ clicks, single finger tapping
 4. Export both TXT and CSV for analysis
 
+### Details
+- Analyzed over 5 sets of human analysis test data to determine "normal" variance threshholds
+- Once this metric was determined I realized the clickers current vairance (around 500 at the time),
+- was nowhere near a normal data distrubtion from a legit players data (1000-7200).
+- Current variance hovers around 1500 in this version (v3.5.1) but I plan to make the variance fluctuate much more chaotically and hopefully above and beyond an average of 2000. 
+
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Export Error
-✅ **FIXED in v3.5.1**: UTF-8 encoding now handles all Unicode characters
+**FIXED in v3.5.1**: UTF-8 encoding now handles all Unicode characters
 
 ### High Risk Detection
-- Enable **Enhanced Chaos Mode** (F9)
+- ~~Enable **Enhanced Chaos Mode** (F9)~~ Enhanced Chaos Mode is now the only mode availible in the clicker.
 - Variance should be 1,500-2,500 for butterfly simulation
 
 ### No Clicks Registering
@@ -183,7 +191,7 @@ Record human clicking patterns to train AI models that can distinguish between:
 
 ---
 
-## 📊 Technical Details
+## Technical Details
 
 ### Distributions
 - **70% Gaussian**: Box-Muller transform
@@ -202,15 +210,15 @@ Record human clicking patterns to train AI models that can distinguish between:
 
 ---
 
-## 📝 Version History
+## Version History
 
 ### v3.5.1 FINAL (December 18, 2025)
-- ✅ Fixed UTF-8 encoding for all file exports
-- ✅ Updated training thresholds: 100/200/250
-- ✅ Clicker data organized in `clickerData/` folder
-- ✅ Fixed header text cutoff (expanded dimensions)
-- ✅ Enhanced error messages
-- ✅ Production-ready release
+- Fixed UTF-8 encoding for all file exports
+- Updated training thresholds: 150/250/350
+- Clicker data organized in `clickerData/` folder
+- Fixed header text cutoff (expanded dimensions)
+- Enhanced error messages
+- Production-ready release
 
 ### v3.5 (December 18, 2025)
 - Added real-time CPS line graph
@@ -231,17 +239,7 @@ This tool is for **educational purposes only**. Use of auto-clickers may violate
 
 ---
 
-## 🎯 Future Plans (v3.6+)
-
-- 🎮 Mini-mode overlay for in-game use
-- 📈 AI-powered pattern optimization
-- 🔄 Batch export of all sessions
-- 📊 Advanced statistical analysis
-- 🌐 Multi-language support
-
----
-
-## 💡 Tips for Best Results
+## Tips for Best Results
 
 1. **Use Enhanced Mode** for butterfly simulation
 2. **Record training data** for comparison
@@ -251,14 +249,12 @@ This tool is for **educational purposes only**. Use of auto-clickers may violate
 
 ---
 
-## 📧 Support
+## Support
 
 For issues or feature requests, review the code comments or analyze export data for insights.
 
 **Version**: 3.5.1 FINAL  
 **Release Date**: December 18, 2025  
-**Status**: Production Ready ✅
+**Status**: Production
 
 ---
-
-**Happy clicking! ⚔️**
