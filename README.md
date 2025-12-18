@@ -84,7 +84,7 @@ Desktop/ <br>
 
 ## Notes
 
--F6 by default is a conflict keybind in Minecraft. Change or disable this keybind on your Minecraft instance to avoid overlap. 
+-F6 by default is a conflict keybind in Minecraft. Change or disable this keybind on your Minecraft instance to avoid overlap. <br>
 -Future plans include a keybind wizard built into the GUI. Mini-mode may not be a feature that we implement at all.
 
 ---
