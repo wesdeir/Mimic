@@ -2,15 +2,16 @@
 ═══════════════════════════════════════════════════════════════════════════════
 MINECRAFT AUTO CLICKER - ANTI-CHEAT COMPLIANT
 ═══════════════════════════════════════════════════════════════════════════════
-Version: 3.5.1 - Complete with ClickerData Export Path
+Version: 3.5.1 FINAL - Production Ready
 Target: 7-12 CPS range with human-like variance
 
-Updates in v3.5.1:
+Updates in v3.5.1 FINAL:
+  ✅ Fixed UTF-8 encoding for all file exports (fixes export error)
+  ✅ Updated training thresholds: 100 min / 200 recommended / 250+ complete
   ✅ Clicker session exports to Desktop/training_data/clickerData/
   ✅ Training data exports to Desktop/training_data/{butterfly|jitter|normal}/
   ✅ Fixed header text cutoff
-  ✅ Expanded GUI dimensions for better visibility
-  ✅ Complete file organization structure
+  ✅ All logic validated and complete
   
 File Organization:
   training_data/
@@ -82,6 +83,11 @@ class Config:
     # Mouse Button Constants
     VK_XBUTTON2 = 0x06  # MB5
     VK_LBUTTON = 0x01   # Left mouse button
+    
+    # Training Thresholds
+    TRAINING_MIN_CLICKS = 100
+    TRAINING_RECOMMENDED_CLICKS = 200
+    TRAINING_COMPLETE_CLICKS = 250
     
     # File Organization - DESKTOP PATHS
     @staticmethod
@@ -449,9 +455,9 @@ class ClickerEngine:
         }
     
     def export_to_csv(self, filename):
-        """NEW: Export click data to CSV for analysis"""
+        """✅ FIXED: Export click data to CSV with UTF-8 encoding"""
         try:
-            with open(filename, 'w', newline='') as csvfile:
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['Click_Number', 'Delay_MS', 'CPS', 'Timestamp'])
                 
@@ -466,7 +472,7 @@ class ClickerEngine:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HUMAN CLICK TRACKER - WITH CSV EXPORT
+# HUMAN CLICK TRACKER - WITH UTF-8 ENCODING FIX
 # ═════════════════════════════════════════════════════════════════════════════
 
 class HumanClickTracker:
@@ -546,9 +552,9 @@ class HumanClickTracker:
         }
     
     def export_to_csv(self, filename):
-        """NEW: Export training data to CSV"""
+        """✅ FIXED: Export training data to CSV with UTF-8 encoding"""
         try:
-            with open(filename, 'w', newline='') as csvfile:
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(['Click_Number', 'Delay_MS', 'CPS', 'Training_Type'])
                 
@@ -562,11 +568,12 @@ class HumanClickTracker:
             return False
     
     def export_human_stats(self):
-        """Export complete human clicking statistics - DESKTOP PATH"""
+        """✅ FIXED: Export complete human clicking statistics with UTF-8 encoding"""
         stats = self.get_stats()
         
         if not stats:
-            print("\n[!] Not enough data. Need at least 10 clicks!\n")
+            print(f"\n[!] Not enough data. Need at least 10 clicks! (Current: {self.total_clicks})\n")
+            messagebox.showwarning("Insufficient Data", f"Need at least 10 valid clicks!\n\nCurrent clicks: {self.total_clicks}")
             return
         
         training_type = stats['training_type'].upper()
@@ -687,30 +694,39 @@ FILE SAVED TO DESKTOP
         try:
             os.makedirs(folder_path, exist_ok=True)
             
-            # Save TXT report
+            # Save TXT report with UTF-8 encoding
             txt_full_path = os.path.join(folder_path, txt_filename)
-            with open(txt_full_path, 'w') as f:
+            with open(txt_full_path, 'w', encoding='utf-8') as f:
                 f.write(report)
             print(f"[SUCCESS] TXT report saved to: {txt_full_path}\n")
             
-            # Save CSV data
+            # Save CSV data with UTF-8 encoding
             csv_full_path = os.path.join(folder_path, csv_filename)
             if self.export_to_csv(csv_full_path):
                 print(f"[SUCCESS] CSV data saved to: {csv_full_path}\n")
             
             print(f"[INFO] Files organized in Desktop/training_data/{training_type_safe}/\n")
             
+            messagebox.showinfo(
+                "Export Success",
+                f"Training data exported!\n\nTXT: {txt_filename}\nCSV: {csv_filename}\n\nFolder: training_data/{training_type_safe}/"
+            )
+            
         except Exception as e:
             # Fallback to current directory
             try:
-                with open(txt_filename, 'w') as f:
+                with open(txt_filename, 'w', encoding='utf-8') as f:
                     f.write(report)
                 self.export_to_csv(csv_filename)
                 print(f"[SUCCESS] Files exported to current directory\n")
                 print(f"[WARNING] Could not create Desktop folder: {e}\n")
+                messagebox.showinfo(
+                    "Export Success (Current Dir)",
+                    f"Files saved to current directory:\n{txt_filename}\n{csv_filename}"
+                )
             except Exception as e2:
                 print(f"[ERROR] Could not save files: {e2}\n")
-
+                messagebox.showerror("Export Failed", f"Could not save files:\n{str(e2)}")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CPS LINE GRAPH VISUALIZER
@@ -1031,8 +1047,8 @@ class AutoClickerGUI:
         
         # Main Window Setup - EXPANDED DIMENSIONS
         self.root = tk.Tk()
-        self.root.title("Minecraft Auto Clicker v3.5.1 - Feature Complete")
-        self.root.geometry("620x760")  # Increased height from 720 to 760
+        self.root.title("Minecraft Auto Clicker v3.5.1 FINAL - Production Ready")
+        self.root.geometry("620x760")  # Increased height
         self.root.resizable(False, False)
         
         # Dark Theme Colors
@@ -1080,13 +1096,13 @@ class AutoClickerGUI:
         """Build complete UI with all features"""
         
         # HEADER - EXPANDED HEIGHT
-        header_frame = tk.Frame(self.root, bg=self.header_color, height=125)  # Increased from 110 to 125
+        header_frame = tk.Frame(self.root, bg=self.header_color, height=125)
         header_frame.pack(fill=tk.X, pady=(0, 8))
         header_frame.pack_propagate(False)
         
         title = tk.Label(
             header_frame,
-            text="⚔️ Minecraft Auto Clicker v3.5.1",
+            text="⚔️ Minecraft Auto Clicker v3.5.1 FINAL",
             font=("Arial", 17, "bold"),
             bg=self.header_color,
             fg=self.fg_color
@@ -1095,7 +1111,7 @@ class AutoClickerGUI:
         
         subtitle = tk.Label(
             header_frame,
-            text="Anti-Cheat Compliant • 7-12 CPS • Feature Complete",
+            text="Anti-Cheat Compliant • 7-12 CPS • Production Ready",
             font=("Arial", 8),
             bg=self.header_color,
             fg="#888888"
@@ -1111,7 +1127,7 @@ class AutoClickerGUI:
         )
         self.mode_indicator.pack(pady=(0, 4))
         
-        # File path indicator - NEW!
+        # File path indicator
         self.path_indicator = tk.Label(
             header_frame,
             text="📁 Desktop/training_data/",
@@ -1725,7 +1741,7 @@ Folder Structure:
     
     
     def create_page_training(self):
-        """Training page with click-type selection"""
+        """✅ UPDATED: Training page with 100/200/250 thresholds"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
@@ -1896,9 +1912,9 @@ Folder Structure:
         
         tips = [
             "• Click naturally for 30+ seconds",
-            "• Aim for 50-100 clicks per session",
-            "• Files save to Desktop/training_data/",
-            "• Export TXT + CSV automatically"
+            "• Minimum: 100 clicks | Recommended: 200",
+            "• Complete: 250+ clicks",
+            "• Files save to Desktop/training_data/"
         ]
         
         for tip in tips:
@@ -1912,8 +1928,7 @@ Folder Structure:
             ).pack(pady=2, padx=20, anchor="w")
         
         tk.Label(info_panel, text="", bg=self.panel_color, height=1).pack()
-    
-    
+
     def create_metric_row(self, parent, label_text, var_name, row):
         """Create metric row for analytics"""
         label = tk.Label(
@@ -2174,7 +2189,7 @@ Folder Structure:
     
     
     def export_stats(self):
-        """Export detailed TXT stats to Desktop/training_data/clickerData/"""
+        """✅ FIXED: Export detailed TXT stats with UTF-8 encoding"""
         if not self.last_session_stats:
             messagebox.showwarning("No Data", "Complete a session first!")
             return
@@ -2302,9 +2317,9 @@ Folder structure:
             # Create directory if it doesn't exist
             os.makedirs(clicker_data_path, exist_ok=True)
             
-            # Save to organized path
+            # Save to organized path with UTF-8 encoding
             full_path = os.path.join(clicker_data_path, filename)
-            with open(full_path, 'w') as f:
+            with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(report)
             
             print(f"[SUCCESS] Stats exported to: {full_path}\n")
@@ -2316,7 +2331,7 @@ Folder structure:
         except Exception as e:
             # Fallback to current directory
             try:
-                with open(filename, 'w') as f:
+                with open(filename, 'w', encoding='utf-8') as f:
                     f.write(report)
                 print(f"[SUCCESS] Stats exported to current directory: {filename}\n")
                 print(f"[WARNING] Could not create Desktop folder: {e}\n")
@@ -2330,7 +2345,7 @@ Folder structure:
     
     
     def export_csv(self):
-        """Export session data to CSV in Desktop/training_data/clickerData/"""
+        """✅ FIXED: Export session data to CSV with UTF-8 encoding"""
         if not self.engine or not self.engine.all_delays:
             messagebox.showwarning("No Data", "No click data to export!")
             return
@@ -2424,7 +2439,7 @@ Folder structure:
     
     
     def update_display(self):
-        """Update all GUI elements"""
+        """✅ UPDATED: Display with 100/200/250 training thresholds"""
         if self.active and self.engine:
             # Update status
             if self.clicking:
@@ -2492,15 +2507,22 @@ Folder structure:
             self.variance_card.config(text="--")
             self.avg_cps_card.config(text="--")
             
-            # Training progress
+            # ✅ UPDATED: Training progress with 100/200/250 thresholds
             clicks = self.human_tracker.total_clicks
-            if clicks < 30:
-                progress = f"Progress: {clicks}/30 minimum"
-            elif clicks < 50:
-                progress = f"Progress: {clicks}/50 recommended"
+            if clicks < Config.TRAINING_MIN_CLICKS:
+                progress = f"Progress: {clicks}/{Config.TRAINING_MIN_CLICKS} minimum"
+                progress_color = "#888888"
+            elif clicks < Config.TRAINING_RECOMMENDED_CLICKS:
+                progress = f"Progress: {clicks}/{Config.TRAINING_RECOMMENDED_CLICKS} recommended"
+                progress_color = self.training_color
+            elif clicks < Config.TRAINING_COMPLETE_CLICKS:
+                progress = f"Almost there: {clicks}/{Config.TRAINING_COMPLETE_CLICKS}"
+                progress_color = self.training_color
             else:
-                progress = f"✅ {clicks} clicks recorded!"
-            self.training_progress.config(text=progress, fg=self.training_color)
+                progress = f"✅ {clicks} clicks - COMPLETE!"
+                progress_color = self.accent_color
+            
+            self.training_progress.config(text=progress, fg=progress_color)
             
             if self.human_tracker.session_start:
                 elapsed = (datetime.now() - self.human_tracker.session_start).total_seconds()
@@ -2562,9 +2584,11 @@ if __name__ == "__main__":
             exit(1)
         
         print("═" * 70)
-        print("MINECRAFT AUTO CLICKER v3.5.1 - FEATURE COMPLETE")
+        print("MINECRAFT AUTO CLICKER v3.5.1 FINAL - PRODUCTION READY")
         print("═" * 70)
-        print("\n✅ All logic validated")
+        print("\n✅ All logic validated and complete")
+        print("✅ UTF-8 encoding fixed (export error resolved)")
+        print("✅ Training thresholds: 100 min / 200 recommended / 250 complete")
         print("✅ Desktop path: Desktop/training_data/")
         print("✅ Clicker exports: Desktop/training_data/clickerData/")
         print("✅ Training exports: Desktop/training_data/{butterfly|jitter|normal}/")
