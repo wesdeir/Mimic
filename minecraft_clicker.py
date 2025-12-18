@@ -2,35 +2,23 @@
 ═══════════════════════════════════════════════════════════════════════════════
 MINECRAFT AUTO CLICKER - ANTI-CHEAT COMPLIANT
 ═══════════════════════════════════════════════════════════════════════════════
-Version: 3.5 - Feature Complete with Enhanced Analytics
+Version: 3.5.1 - Complete with ClickerData Export Path
 Target: 7-12 CPS range with human-like variance
 
-New in v3.5:
-  ✅ Real-time CPS line graph (30-second rolling window)
-  ✅ Session comparison tool
-  ✅ CSV export for data analysis
-  ✅ Training progress indicators
-  ✅ Enhanced danger zone visualization
-  ✅ Quick stats cards on dashboard
-  ✅ Desktop path for training data
-  ✅ Batch export functionality
-  ✅ Mini-mode for in-game overlay
-  ✅ Complete logic review and validation
+Updates in v3.5.1:
+  ✅ Clicker session exports to Desktop/training_data/clickerData/
+  ✅ Training data exports to Desktop/training_data/{butterfly|jitter|normal}/
+  ✅ Fixed header text cutoff
+  ✅ Expanded GUI dimensions for better visibility
+  ✅ Complete file organization structure
   
-Logic Validation:
-  ✅ Gaussian + Weibull distributions (Box-Muller transform)
-  ✅ Dynamic variance adjustment (checks every 10s)
-  ✅ Pattern break detection (20-click window)
-  ✅ CPS safety limiter (prevents >11 CPS spikes)
-  ✅ Burst mode probability (15% chance after 5 clicks)
-  ✅ Pause mode probability (8% chance after 10 clicks)
-  ✅ User baseline randomization (0.88-1.12x multiplier)
-  ✅ Drift accumulation (±0.35 max, enhanced mode)
-  ✅ Rhythm oscillation (sine wave, 22ms amplitude)
-  ✅ Noise injection (±28ms random, enhanced mode)
-  ✅ Consecutive click fatigue multiplier
-  ✅ Active clicking time tracking
-  ✅ Percentile statistics (P10, P50, P90)
+File Organization:
+  training_data/
+    ├── clickerData/     ← Auto-clicker sessions (F5/F6)
+    ├── butterfly/       ← Human training data (F8)
+    ├── jitter/          ← Human training data (F8)
+    ├── normal/          ← Human training data (F8)
+    └── mixed/           ← Human training data (F8)
   
 Navigation:
   - Arrow Keys (← →): Switch pages
@@ -95,12 +83,17 @@ class Config:
     VK_XBUTTON2 = 0x06  # MB5
     VK_LBUTTON = 0x01   # Left mouse button
     
-    # Training Data Organization - DESKTOP PATH
+    # File Organization - DESKTOP PATHS
     @staticmethod
     def get_training_data_path():
         """Get path to Desktop/training_data/"""
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
         return os.path.join(desktop, "training_data")
+    
+    @staticmethod
+    def get_clicker_data_path():
+        """Get path to Desktop/training_data/clickerData/"""
+        return os.path.join(Config.get_training_data_path(), "clickerData")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -720,7 +713,7 @@ FILE SAVED TO DESKTOP
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# CPS LINE GRAPH VISUALIZER - NEW!
+# CPS LINE GRAPH VISUALIZER
 # ═════════════════════════════════════════════════════════════════════════════
 
 class CPSLineGraph(tk.Canvas):
@@ -838,7 +831,7 @@ class CPSLineGraph(tk.Canvas):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HISTOGRAM VISUALIZER (Same as v3.4)
+# HISTOGRAM VISUALIZER
 # ═════════════════════════════════════════════════════════════════════════════
 
 class HistogramCanvas(tk.Canvas):
@@ -1036,10 +1029,10 @@ class AutoClickerGUI:
     def __init__(self):
         """Initialize the complete GUI"""
         
-        # Main Window Setup
+        # Main Window Setup - EXPANDED DIMENSIONS
         self.root = tk.Tk()
-        self.root.title("Minecraft Auto Clicker v3.5 - Feature Complete")
-        self.root.geometry("620x720")
+        self.root.title("Minecraft Auto Clicker v3.5.1 - Feature Complete")
+        self.root.geometry("620x760")  # Increased height from 720 to 760
         self.root.resizable(False, False)
         
         # Dark Theme Colors
@@ -1086,19 +1079,19 @@ class AutoClickerGUI:
     def setup_ui(self):
         """Build complete UI with all features"""
         
-        # HEADER
-        header_frame = tk.Frame(self.root, bg=self.header_color, height=110)
+        # HEADER - EXPANDED HEIGHT
+        header_frame = tk.Frame(self.root, bg=self.header_color, height=125)  # Increased from 110 to 125
         header_frame.pack(fill=tk.X, pady=(0, 8))
         header_frame.pack_propagate(False)
         
         title = tk.Label(
             header_frame,
-            text="⚔️ Minecraft Auto Clicker v3.5",
+            text="⚔️ Minecraft Auto Clicker v3.5.1",
             font=("Arial", 17, "bold"),
             bg=self.header_color,
             fg=self.fg_color
         )
-        title.pack(pady=(15, 2))
+        title.pack(pady=(15, 3))
         
         subtitle = tk.Label(
             header_frame,
@@ -1117,6 +1110,16 @@ class AutoClickerGUI:
             fg=self.enhanced_color
         )
         self.mode_indicator.pack(pady=(0, 4))
+        
+        # File path indicator - NEW!
+        self.path_indicator = tk.Label(
+            header_frame,
+            text="📁 Desktop/training_data/",
+            font=("Arial", 7),
+            bg=self.header_color,
+            fg="#666666"
+        )
+        self.path_indicator.pack(pady=(0, 5))
         
         self.status_indicator = tk.Label(
             header_frame,
@@ -1158,7 +1161,7 @@ class AutoClickerGUI:
         self.create_page_dashboard()
         self.create_page_settings()
         self.create_page_analytics()
-        self.create_page_graphs()  # NEW: Graphs page
+        self.create_page_graphs()
         self.create_page_training()
         
         # NAVIGATION FOOTER
@@ -1204,10 +1207,7 @@ class AutoClickerGUI:
         
         # Show first page
         self.switch_page(0)
-
-    # ═════════════════════════════════════════════════════════════════════════
-    # PAGE 1: ENHANCED DASHBOARD WITH QUICK STATS CARDS
-    # ═════════════════════════════════════════════════════════════════════════
+    
     
     def create_page_dashboard(self):
         """Enhanced dashboard with visual stats cards"""
@@ -1370,10 +1370,6 @@ class AutoClickerGUI:
         setattr(self, var_name, value_label)
     
     
-    # ═════════════════════════════════════════════════════════════════════════
-    # PAGE 2: SETTINGS
-    # ═════════════════════════════════════════════════════════════════════════
-    
     def create_page_settings(self):
         """Settings page with mode controls"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
@@ -1439,7 +1435,7 @@ class AutoClickerGUI:
             justify=tk.CENTER
         ).pack(pady=(0, 12))
         
-        # Export settings
+        # Export settings - UPDATED WITH FOLDER STRUCTURE
         export_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         export_panel.pack(fill=tk.X, pady=(0, 8), padx=2)
         
@@ -1451,8 +1447,16 @@ class AutoClickerGUI:
             fg=self.fg_color
         ).pack(pady=(12, 8))
         
-        desktop_path = Config.get_training_data_path()
-        path_text = f"Training data saves to:\n{desktop_path}"
+        # Show folder structure
+        path_text = """All data saves to Desktop/training_data/
+
+Folder Structure:
+  training_data/
+    ├── clickerData/     ← Session exports (F5/F6)
+    ├── butterfly/       ← Training data (F8)
+    ├── jitter/          ← Training data (F8)
+    ├── normal/          ← Training data (F8)
+    └── mixed/           ← Training data (F8)"""
         
         tk.Label(
             export_panel,
@@ -1460,8 +1464,8 @@ class AutoClickerGUI:
             font=("Courier", 7),
             bg=self.panel_color,
             fg="#888888",
-            justify=tk.CENTER
-        ).pack(pady=(0, 5))
+            justify=tk.LEFT
+        ).pack(pady=(0, 8), padx=10)
         
         export_btns = tk.Frame(export_panel, bg=self.panel_color)
         export_btns.pack(pady=8)
@@ -1492,7 +1496,14 @@ class AutoClickerGUI:
             width=15
         ).pack(side=tk.LEFT, padx=5)
         
-        tk.Label(export_panel, text="", bg=self.panel_color, height=1).pack()
+        tk.Label(
+            export_panel,
+            text="💡 Clicker sessions → clickerData/\n💡 Training data → butterfly/jitter/normal/",
+            font=("Arial", 7),
+            bg=self.panel_color,
+            fg="#888888",
+            justify=tk.CENTER
+        ).pack(pady=(5, 12))
         
         # Training note
         training_note_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
@@ -1572,10 +1583,6 @@ class AutoClickerGUI:
         scrollbar.pack(side="right", fill="y")
     
     
-    # ═════════════════════════════════════════════════════════════════════════
-    # PAGE 3: ANALYTICS
-    # ═════════════════════════════════════════════════════════════════════════
-    
     def create_page_analytics(self):
         """Analytics page with session comparison"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
@@ -1640,12 +1647,8 @@ class AutoClickerGUI:
         tk.Label(history_panel, text="", bg=self.panel_color, height=1).pack()
     
     
-    # ═════════════════════════════════════════════════════════════════════════
-    # PAGE 4: GRAPHS (NEW!)
-    # ═════════════════════════════════════════════════════════════════════════
-    
     def create_page_graphs(self):
-        """NEW: Graphs page with CPS line graph and histogram"""
+        """Graphs page with CPS line graph and histogram"""
         page = tk.Frame(self.content_frame, bg=self.bg_color)
         self.pages.append(page)
         
@@ -1720,10 +1723,6 @@ class AutoClickerGUI:
         
         tk.Label(histogram_panel, text="", bg=self.panel_color, height=1).pack()
     
-    
-    # ═════════════════════════════════════════════════════════════════════════
-    # PAGE 5: TRAINING
-    # ═════════════════════════════════════════════════════════════════════════
     
     def create_page_training(self):
         """Training page with click-type selection"""
@@ -1914,10 +1913,6 @@ class AutoClickerGUI:
         
         tk.Label(info_panel, text="", bg=self.panel_color, height=1).pack()
     
-    
-    # ═════════════════════════════════════════════════════════════════════════
-    # HELPER METHODS
-    # ═════════════════════════════════════════════════════════════════════════
     
     def create_metric_row(self, parent, label_text, var_name, row):
         """Create metric row for analytics"""
@@ -2179,7 +2174,7 @@ class AutoClickerGUI:
     
     
     def export_stats(self):
-        """Export detailed TXT stats"""
+        """Export detailed TXT stats to Desktop/training_data/clickerData/"""
         if not self.last_session_stats:
             messagebox.showwarning("No Data", "Complete a session first!")
             return
@@ -2189,10 +2184,13 @@ class AutoClickerGUI:
         
         if stats['variance'] > 250 and stats['max_cps'] <= 12:
             risk = "LOW"
+            risk_explanation = "Excellent randomness, compliant CPS"
         elif stats['variance'] > 120:
             risk = "MEDIUM"
+            risk_explanation = "Acceptable variance, monitor closely"
         else:
             risk = "HIGH"
+            risk_explanation = "Too consistent, increase randomness"
         
         report = f"""
 ══════════════════════════════════════════════════════════════════════════════
@@ -2200,6 +2198,7 @@ MINECRAFT AUTO CLICKER - SESSION REPORT
 ══════════════════════════════════════════════════════════════════════════════
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Mode: {mode_text}
+Data Type: AUTO-CLICKER SESSION (Not Human Training)
 
 SESSION OVERVIEW
 ──────────────────────────────────────────────────────────────────────────────
@@ -2207,6 +2206,7 @@ Total Clicks:              {stats['total']}
 Session Duration:          {stats['session_duration']:.1f}s
 Active Clicking Time:      {stats['clicking_duration']:.1f}s
 Idle Time:                 {stats['idle_time']:.1f}s
+Uptime Percentage:         {(stats['clicking_duration']/stats['session_duration']*100):.1f}%
 
 CPS STATISTICS
 ──────────────────────────────────────────────────────────────────────────────
@@ -2214,15 +2214,17 @@ Average CPS:               {stats['avg_cps']:.2f}
 Median CPS:                {stats['median_cps']:.2f}
 Minimum CPS:               {stats['min_cps']:.2f}
 Maximum CPS:               {stats['max_cps']:.2f}
+CPS Range:                 {stats['max_cps'] - stats['min_cps']:.2f}
 
-DELAY STATISTICS
+DELAY STATISTICS (milliseconds)
 ──────────────────────────────────────────────────────────────────────────────
 Average Delay:             {stats['avg_delay']:.2f} ms
 Median Delay (P50):        {stats['p50_delay']:.2f} ms
-P10 Delay:                 {stats['p10_delay']:.2f} ms
-P90 Delay:                 {stats['p90_delay']:.2f} ms
+10th Percentile (P10):     {stats['p10_delay']:.2f} ms
+90th Percentile (P90):     {stats['p90_delay']:.2f} ms
 Min Delay:                 {stats['min_delay']:.2f} ms
 Max Delay:                 {stats['max_delay']:.2f} ms
+Delay Range:               {stats['max_delay'] - stats['min_delay']:.2f} ms
 
 ANTI-DETECTION METRICS
 ──────────────────────────────────────────────────────────────────────────────
@@ -2230,45 +2232,147 @@ Variance:                  {stats['variance']:.0f}
 Standard Deviation:        {stats['std_dev']:.2f}
 Pattern Breaks:            {stats['pattern_breaks']}
 Variance Adjustments:      {stats['variance_adjustments']}
-Burst Events:              {stats['burst_count']}
-Pause Events:              {stats['pause_count']}
+Burst Events:              {stats.get('burst_count', 0)}
+Pause Events:              {stats.get('pause_count', 0)}
 
 DETECTION RISK ASSESSMENT
 ──────────────────────────────────────────────────────────────────────────────
 Risk Level:                {risk}
+Risk Explanation:          {risk_explanation}
 
+RECOMMENDATIONS
+──────────────────────────────────────────────────────────────────────────────
+"""
+        
+        if risk == "HIGH":
+            report += """⚠️  HIGH RISK DETECTED
+   - Variance too low (too consistent)
+   - Consider enabling Enhanced Chaos Mode (F9)
+   - May trigger anti-cheat pattern detection
+"""
+        elif risk == "MEDIUM":
+            report += """⚡ MODERATE RISK
+   - Variance acceptable but could be improved
+   - Enhanced mode recommended for better safety
+   - Monitor for pattern detection
+"""
+        else:
+            report += """✅ LOW RISK - EXCELLENT
+   - High variance matches human clicking
+   - CPS within safe range (7-12)
+   - Anti-cheat compliant patterns detected
+"""
+        
+        report += f"""
+
+══════════════════════════════════════════════════════════════════════════════
+FILE ORGANIZATION
+══════════════════════════════════════════════════════════════════════════════
+This file saved to: Desktop/training_data/clickerData/
+
+Folder structure:
+  training_data/
+    ├── clickerData/         ← Auto-clicker session data
+    │   ├── clicker_stats_enhanced_YYYYMMDD_HHMMSS.txt
+    │   └── clicker_data_enhanced_YYYYMMDD_HHMMSS.csv
+    ├── butterfly/           ← Human training data
+    ├── jitter/              ← Human training data
+    ├── normal/              ← Human training data
+    └── mixed/               ← Human training data
+
+💡 Use this data for:
+   - Performance analysis
+   - Comparing auto-clicker vs human patterns
+   - Training AI models
+   - Anti-cheat compliance verification
 ══════════════════════════════════════════════════════════════════════════════
 """
         
         print(report)
         
+        # Create filename with mode suffix
         mode_suffix = "_enhanced" if stats.get('enhanced_mode', False) else "_standard"
-        filename = f"clicker_stats{mode_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"clicker_stats{mode_suffix}_{timestamp}.txt"
+        
+        # Get clicker data path
+        clicker_data_path = Config.get_clicker_data_path()
         
         try:
-            with open(filename, 'w') as f:
+            # Create directory if it doesn't exist
+            os.makedirs(clicker_data_path, exist_ok=True)
+            
+            # Save to organized path
+            full_path = os.path.join(clicker_data_path, filename)
+            with open(full_path, 'w') as f:
                 f.write(report)
-            print(f"[SUCCESS] Stats exported to: {filename}\n")
-            messagebox.showinfo("Export Success", f"Stats saved to:\n{filename}")
+            
+            print(f"[SUCCESS] Stats exported to: {full_path}\n")
+            print(f"[INFO] File organized in Desktop/training_data/clickerData/\n")
+            messagebox.showinfo(
+                "Export Success", 
+                f"Stats saved to:\n{full_path}\n\nFolder: training_data/clickerData/"
+            )
         except Exception as e:
-            print(f"[ERROR] Export failed: {e}\n")
-            messagebox.showerror("Export Failed", str(e))
+            # Fallback to current directory
+            try:
+                with open(filename, 'w') as f:
+                    f.write(report)
+                print(f"[SUCCESS] Stats exported to current directory: {filename}\n")
+                print(f"[WARNING] Could not create Desktop folder: {e}\n")
+                messagebox.showinfo(
+                    "Export Success (Current Dir)", 
+                    f"Stats saved to:\n{filename}\n\n(Could not access Desktop folder)"
+                )
+            except Exception as e2:
+                print(f"[ERROR] Export failed: {e2}\n")
+                messagebox.showerror("Export Failed", str(e2))
     
     
     def export_csv(self):
-        """Export session data to CSV"""
+        """Export session data to CSV in Desktop/training_data/clickerData/"""
         if not self.engine or not self.engine.all_delays:
             messagebox.showwarning("No Data", "No click data to export!")
             return
         
         mode_suffix = "_enhanced" if self.enhanced_mode else "_standard"
-        filename = f"clicker_data{mode_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"clicker_data{mode_suffix}_{timestamp}.csv"
         
-        if self.engine.export_to_csv(filename):
-            print(f"[SUCCESS] CSV exported to: {filename}\n")
-            messagebox.showinfo("Export Success", f"CSV saved to:\n{filename}")
-        else:
-            messagebox.showerror("Export Failed", "Could not save CSV file")
+        # Get clicker data path
+        clicker_data_path = Config.get_clicker_data_path()
+        
+        try:
+            # Create directory if it doesn't exist
+            os.makedirs(clicker_data_path, exist_ok=True)
+            
+            # Save to organized path
+            full_path = os.path.join(clicker_data_path, filename)
+            
+            if self.engine.export_to_csv(full_path):
+                print(f"[SUCCESS] CSV exported to: {full_path}\n")
+                print(f"[INFO] File organized in Desktop/training_data/clickerData/\n")
+                messagebox.showinfo(
+                    "Export Success",
+                    f"CSV saved to:\n{full_path}\n\nFolder: training_data/clickerData/"
+                )
+            else:
+                raise Exception("CSV export method returned False")
+        except Exception as e:
+            # Fallback to current directory
+            try:
+                if self.engine.export_to_csv(filename):
+                    print(f"[SUCCESS] CSV exported to current directory: {filename}\n")
+                    print(f"[WARNING] Could not create Desktop folder: {e}\n")
+                    messagebox.showinfo(
+                        "Export Success (Current Dir)",
+                        f"CSV saved to:\n{filename}\n\n(Could not access Desktop folder)"
+                    )
+                else:
+                    raise Exception("CSV export failed")
+            except Exception as e2:
+                print(f"[ERROR] CSV export failed: {e2}\n")
+                messagebox.showerror("Export Failed", str(e2))
     
     
     def toggle_mini_mode(self):
@@ -2458,13 +2562,16 @@ if __name__ == "__main__":
             exit(1)
         
         print("═" * 70)
-        print("MINECRAFT AUTO CLICKER v3.5 - FEATURE COMPLETE")
+        print("MINECRAFT AUTO CLICKER v3.5.1 - FEATURE COMPLETE")
         print("═" * 70)
         print("\n✅ All logic validated")
-        print("✅ Desktop path configured: Desktop/training_data/")
+        print("✅ Desktop path: Desktop/training_data/")
+        print("✅ Clicker exports: Desktop/training_data/clickerData/")
+        print("✅ Training exports: Desktop/training_data/{butterfly|jitter|normal}/")
         print("✅ CSV export enabled")
         print("✅ Real-time CPS graphing")
         print("✅ Enhanced analytics")
+        print("✅ Header text fix (expanded dimensions)")
         print("\nStarting GUI...\n")
         
         app = AutoClickerGUI()
