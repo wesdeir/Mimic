@@ -93,14 +93,13 @@ Note: Future plans include a keybind wizard built into the GUI. Mini-mode may no
 pip install keyboard
 pip install pywin32
 
-text
-
 ### Setup
 1. Download `minecraft_autoclicker_v3.5.1_final.py`
-2. **Run as Administrator** (required for keyboard hooks)
-3. Navigate through pages with arrow keys
-4. Press F4 to activate, hold MB5 to click
-
+2. Create the folder directory exactly as shown in the File Organization paragraph above
+3. **Run as Administrator** (required for keyboard hooks)
+4. Navigate through pages with arrow keys
+5. Press F4 to activate, hold MB5 to click
+Note: I exclusively run this tool through Command Prompt with Admin perms. Find the dir the .py is saved to and call "python 'name_of_file.py'"
 ---
 
 ## Usage Guide
