@@ -82,8 +82,8 @@ Desktop/ <br>
 | **F10**  | Mini-mode (coming in v3.6)      |
 | **← →**  | Navigate pages                  |
 
-Note: F6 by default is a conflict keybind in Minecraft. Change or disable this keybind on your Minecraft instance to avoid overlap. 
-Note: Future plans include a keybind wizard built into the GUI. Mini-mode may not be a feature that we implement at all.
+####Note: F6 by default is a conflict keybind in Minecraft. Change or disable this keybind on your Minecraft instance to avoid overlap. 
+####Note: Future plans include a keybind wizard built into the GUI. Mini-mode may not be a feature that we implement at all.
 ---
 
 ## Installation
