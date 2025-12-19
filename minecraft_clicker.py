@@ -26,8 +26,8 @@ Controls:
   F4  - Toggle On/Off          F9  - Toggle Enhanced Mode
   F5  - Export TXT Stats       F10 - Mini Mode
   F6  - Export CSV             ← → - Navigate Pages
-  F7  - Start/Stop Training    Enter - Quick Toggle
-  F8  - Export Training Data   MB5 - Click (Hold)
+  F7  - Start/Stop Training    Enter - Quick Toggle (Disabled)
+  F8  - Export Training Data   MB1 - Click (Hold)
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -46,7 +46,7 @@ import json
 
 import win32api
 import win32con
-
+from pynput import mouse
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═════════════════════════════════════════════════════════════════════════════
@@ -91,8 +91,8 @@ class Config:
     OUTLIER_COOLDOWN = (30, 80)    # Clicks between outliers
     
     # Mouse Button Constants
-    VK_XBUTTON2 = 0x06  # MB5
-    VK_LBUTTON = 0x01   # Left mouse button
+    VK_LBUTTON = 0x01   # Left mouse button - ACTIVE
+    VK_XBUTTON2 = 0x06  # MB5 - Not used, keeping as backup
     
     # Training Thresholds
     TRAINING_MIN_CLICKS = 100
@@ -1318,6 +1318,10 @@ class MinecraftAutoClickerGUI:
         self.current_page = 0
         self.pages = []
         
+        self.physical_left_held = False  # Track physical button state
+        self.mouse_listener = mouse.Listener(on_click=self.on_physical_click)
+        self.mouse_listener.start()
+    
         # Session management
         self.session_manager = SessionManager()
         self.human_tracker = HumanClickTracker(self.session_manager)
@@ -1329,6 +1333,19 @@ class MinecraftAutoClickerGUI:
         self.update_display()
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+    def on_physical_click(self, x, y, button, pressed, injected=False):
+        """Listener for PHYSICAL mouse events only"""
+        # Ignore synthetic clicks from our autoclicker
+        if injected:
+            return
+        
+        # Only track PHYSICAL left button
+        if button == mouse.Button.left:
+            self.physical_left_held = pressed
+            # Uncomment for debugging:
+            # if self.active:
+            #     print(f"[PHYSICAL] Left: {'DOWN' if pressed else 'UP'}")
+
     
     def setup_ui(self):
         """Build complete UI with Ghost Stealth theme"""
@@ -1787,11 +1804,11 @@ Folder Structure:
         
         controls = [
             ("F4", "Toggle On/Off"),
-            ("MB5", "Click (Hold)"),
+            ("LEFT CLICK", "Click (Hold)"),
             ("F5", "Export TXT"),
             ("F6", "Export CSV"),
             ("← →", "Switch Pages"),
-            ("Enter", "Quick Toggle"),
+            #("Enter", "Quick Toggle"), #DISABLED
             ("F7", "Train Start/Stop"),
             ("F8", "Export Baseline"),
             ("F9", "Toggle Enhanced"),
@@ -2732,7 +2749,7 @@ ANALYSIS:
     def setup_hotkeys(self):
         """Register all keyboard hotkeys"""
         keyboard.add_hotkey('f4', self.toggle_active)
-        keyboard.add_hotkey('enter', self.toggle_active)
+        #keyboard.add_hotkey('enter', self.toggle_active) #DISABLED
         keyboard.add_hotkey('f5', self.export_stats)
         keyboard.add_hotkey('f6', self.export_csv)
         keyboard.add_hotkey('f7', self.toggle_training_mode)
@@ -2905,13 +2922,16 @@ ANALYSIS:
             self.engine = AdaptiveClickerEngine(enhanced_mode=self.enhanced_mode)
             self.status_indicator.config(text="🟢 ACTIVE", fg=self.accent_color)
             self.toggle_btn.config(text="⏸ Deactivate (F4)", bg="#f44336")
-            print("\n[MIMIC] Activated - Hold MB5 to click\n")
+            print("\n[MIMIC] Activated - Hold LEFT CLICK to click\n")  # UPDATE MESSAGE
         else:
-            if self.engine:
+            self.clicking = False  # ADD: Stop clicking first
+            if self.engine:        # ADD: Check before calling
                 self.engine.stop_clicking()
+            self.engine = None     # Then set to None
             self.status_indicator.config(text="⚫ INACTIVE", fg=self.inactive_color)
             self.toggle_btn.config(text="▶ Activate (F4)", bg=self.accent_color)
             print("\n[MIMIC] Deactivated\n")
+
     
     def toggle_enhanced_mode(self):
         """Toggle enhanced mode"""
@@ -3050,39 +3070,48 @@ Outliers: {stats['outlier_count']}
         threading.Thread(target=self.clicking_loop, daemon=True).start()
     
     def mouse_button_listener(self):
-        """Listen for MB5 press"""
+        """Monitor for training mode only - clicking handled by pynput"""
         while self.running:
-            if self.active and self.engine:
-                mb5_state = win32api.GetAsyncKeyState(Config.VK_XBUTTON2)
-                if mb5_state & 0x8000:
-                    if not self.clicking:
-                        self.clicking = True
-                        self.engine.start_clicking()
-                else:
-                    if self.clicking:
-                        self.clicking = False
-                        self.engine.stop_clicking()
-            
+            # Training mode (unchanged)
             if self.human_tracker.is_tracking:
-                left_state = win32api.GetAsyncKeyState(Config.VK_LBUTTON)
+                left_state = win32api.GetAsyncKeyState(0x01)
                 if left_state & 0x8000:
                     self.human_tracker.record_click()
                     time.sleep(0.05)
             
             time.sleep(0.01)
+
     
     def clicking_loop(self):
-        """Main clicking loop"""
+        """Main clicking loop - uses pynput for reliable state tracking"""
         while self.running:
-            if self.active and self.clicking:
-                self.engine.click()
+            if self.active and self.engine:
+                # Check the PHYSICAL state (unaffected by synthetic clicks)
+                if self.physical_left_held:
+                    if not self.clicking:
+                        self.clicking = True
+                        self.engine.start_clicking()
+                        print("[MIMIC] Started auto-clicking")
+                    
+                    # Send synthetic click
+                    self.engine.click()
+                    
+                else:
+                    if self.clicking:
+                        self.clicking = False
+                        self.engine.stop_clicking()
+                        print("[MIMIC] Stopped auto-clicking")
+                    time.sleep(0.01)
             else:
                 time.sleep(0.01)
+
     
     def on_close(self):
         """Handle window close"""
         self.running = False
+        self.mouse_listener.stop()  # ADD THIS LINE - Stop pynput listener
         self.root.destroy()
+
     
     def run(self):
         """Run the GUI"""
