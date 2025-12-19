@@ -1,4 +1,4 @@
-# ⚙️ Mimic v3.7 - Statistical Ghost Clicker
+# ⚙️ Mimic v3.7
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
@@ -6,11 +6,11 @@
 
 > **Adaptive Intelligence • Statistical Mimicry**
 
-Mimic is a sophisticated auto-clicker designed for Minecraft 1.8.9 PvP that uses statistical distributions and adaptive algorithms to replicate human clicking patterns. Built specifically to target anti-cheat systems like MMC's AGC with variance-based detection [web:75].
+Mimic is a sophisticated auto-clicker designed for Minecraft PvP that uses statistical distributions and adaptive algorithms to replicate human clicking patterns. Built specifically to target anti-cheat systems like MMC's AGC with variance-based detection.
 
 ---
 
-## 🎯 Features
+## Features
 
 ### **Core Functionality**
 - **Hold-to-Click Activation** - Natural left-click hold interface using pynput [web:112]
@@ -20,22 +20,22 @@ Mimic is a sophisticated auto-clicker designed for Minecraft 1.8.9 PvP that uses
 - **Real-Time Risk Assessment** - Live detection risk scoring (0-100)
 
 ### **Anti-Detection Systems**
-- ✅ Pattern break detection with dynamic adjustment
-- ✅ 2% outlier injection (micro-pauses, panic bursts)
-- ✅ Session re-randomization for behavioral diversity
-- ✅ Drift accumulation and rhythm oscillation
-- ✅ Configurable burst/pause mechanics
+- Pattern break detection with dynamic adjustment
+- 2% outlier injection (micro-pauses, panic bursts)
+- Session re-randomization for behavioral diversity
+- Drift accumulation and rhythm oscillation
+- Configurable burst/pause mechanics
 
 ### **Analysis & Training**
-- 📊 Real-time CPS graphing and delay distribution histograms
-- 🎓 Human baseline training mode (butterfly/jitter/normal)
-- 🔬 Differential analysis (compare human vs bot patterns)
-- 📈 Session history tracking with JSON persistence
-- 💾 CSV/TXT export for external analysis
+- Real-time CPS graphing and delay distribution histograms
+- Human baseline training mode (butterfly/jitter/normal)
+- Differential analysis (compare human vs bot patterns)
+- Session history tracking with JSON persistence
+- CSV/TXT export for external analysis
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 Python 3.8+
 pip install pywin32
@@ -48,7 +48,7 @@ text
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **Install dependencies:**
 
@@ -69,7 +69,7 @@ text
 
 ---
 
-## ⌨️ Keyboard Controls
+## Keyboard Controls
 
 | Key | Action |
 |-----|--------|
@@ -86,7 +86,7 @@ text
 
 ---
 
-## 🎨 GUI Overview
+## GUI Overview
 
 ### **7-Tab Interface:**
 1. **Dashboard** - Live stats, risk assessment, quick actions
@@ -99,7 +99,7 @@ text
 
 ---
 
-## 📊 Target Metrics
+## Target Metrics
 
 ### **Enhanced Mode (Recommended)**
 - **CPS Range:** 7-12 average, 15-16 spikes allowed
@@ -115,7 +115,7 @@ text
 
 ---
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 Based on anti-cheat research for 1.8.9 PvP servers [web:75][web:84]:
 
@@ -138,7 +138,7 @@ Based on anti-cheat research for 1.8.9 PvP servers [web:75][web:84]:
 
 ---
 
-## 📁 File Organization
+## File Organization
 
 Desktop/mimic_data/
 ├── mimicSessions/ # Auto-clicker exports (F5/F6)
@@ -154,7 +154,7 @@ text
 
 ---
 
-## 🔧 Advanced Tuning
+## Advanced Tuning
 
 Accessible in **Settings → Advanced Tuning**:
 
@@ -167,7 +167,7 @@ Fine-tune these during gameplay to balance hit registration vs detection risk.
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **Educational purposes only.** This tool is designed for:
 - Understanding anti-cheat detection systems
@@ -178,7 +178,7 @@ Use at your own risk. The author is not responsible for any bans or violations o
 
 ---
 
-## 🛠️ Technical Details
+## Technical Details
 
 ### **Statistical Methods:**
 - **Box-Muller Transform** - Gaussian random distribution
@@ -194,14 +194,14 @@ Use at your own risk. The author is not responsible for any bans or violations o
 
 ---
 
-## 📝 Version History
+## Version History
 
 ### **v3.7.0** (Current)
-- ✅ Left-click hold activation (pynput integration)
-- ✅ Ghost Stealth UI rebrand
-- ✅ Advanced tuning sliders in GUI
-- ✅ Improved race condition handling
-- ✅ Session history tracking
+- Left-click hold activation (pynput integration)
+- Ghost Stealth UI rebrand
+- Advanced tuning sliders in GUI
+- Improved race condition handling
+- Session history tracking
 
 ### **v3.0-3.6**
 - Statistical engine development
@@ -211,7 +211,7 @@ Use at your own risk. The author is not responsible for any bans or violations o
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Interested in playtesting or contributing data?
 
@@ -222,7 +222,7 @@ Interested in playtesting or contributing data?
 
 ---
 
-## 📜 License
+## License
 
 Educational use only.
 
