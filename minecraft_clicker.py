@@ -1,26 +1,21 @@
 """
 ═══════════════════════════════════════════════════════════════════════════════
-MINECRAFT AUTO CLICKER v3.7 - ENHANCED UI & VISUALIZATION
+MIMIC v3.7 - STATISTICAL GHOST CLICKER
 ═══════════════════════════════════════════════════════════════════════════════
 Version: 3.7.0 - Enhanced UI Update
 Target: 7-12 CPS average with 15-16 CPS spikes
 
-NEW IN v3.7:
-  ✅ 6-Level Color-Coded Risk Display (🟢🟡🔴 emojis)
-  ✅ Component Health Indicators (variance/CPS/patterns)
-  ✅ Real-time Risk Score Visualization
-  ✅ Session Re-Randomization (improved diversity)
+KEY FEATURES:
+  ✅ Adaptive Mixed Mode (butterfly/jitter/normal)
+  ✅ Statistical Distribution Engine (Gaussian + Weibull)
+  ✅ Variance Targeting (1,500-2,500)
+  ✅ 2% Outlier Injection
+  ✅ Real-time Risk Assessment
   ✅ Enhanced Visual Feedback
   
-UNCHANGED (Clicking Logic Preserved):
-  ✅ Mixed Mode Adaptive Clicking
-  ✅ 1,500-2,500 Variance Targeting
-  ✅ Adaptive technique switching
-  ✅ All anti-detection algorithms
-  
 File Organization:
-  training_data/
-    ├── clickerData/     ← Auto-clicker sessions (F5/F6)
+  mimic_data/
+    ├── mimicSessions/   ← Auto-clicker exports (F5/F6)
     ├── butterfly/       ← Human training data
     ├── jitter/          ← Human training data
     ├── normal/          ← Human training data
@@ -59,7 +54,7 @@ import win32con
 class Config:
     """Global configuration with realistic anti-cheat thresholds"""
     
-    # ✅ NEW: Relaxed CPS limits (allow spikes)
+    # Relaxed CPS limits (allow spikes)
     ABSOLUTE_MIN_DELAY_MS = 65   # 15.4 CPS spike allowed
     ABSOLUTE_MAX_DELAY_MS = 400  # Extended pauses for realism
     SUSTAINED_CPS_CAP = 12       # Average shouldn't sustain >12
@@ -68,7 +63,7 @@ class Config:
     ENHANCED_MIN_DELAY_MS = 60   # 16.7 CPS burst maximum
     ENHANCED_MAX_DELAY_MS = 450  # Longer pauses
     
-    # ✅ NEW: Realistic variance targets
+    # Realistic variance targets
     ENHANCED_IDEAL_VARIANCE = 1500   # Minimum acceptable
     ENHANCED_TARGET_VARIANCE = 2200  # Optimal butterfly/jitter
     ENHANCED_MAX_VARIANCE = 3500     # Upper bound
@@ -78,20 +73,20 @@ class Config:
     STANDARD_MAX_VARIANCE = 1500     # Upper bound
     
     # Anti-Detection Thresholds
-    MIN_VARIANCE_THRESHOLD = 800  # Raised from 120
+    MIN_VARIANCE_THRESHOLD = 800
     PATTERN_CHECK_WINDOW = 20
     
-    # ✅ NEW: Adaptive mode parameters
+    # Adaptive mode parameters
     TECHNIQUE_TRANSITION_MIN = 5   # Min clicks before switching
     TECHNIQUE_TRANSITION_MAX = 15  # Max clicks before switching
     
     # Enhanced Mode Parameters
-    BURST_PROBABILITY = 0.20       # Increased from 0.15
-    PAUSE_PROBABILITY = 0.10       # Increased from 0.08
+    BURST_PROBABILITY = 0.20
+    PAUSE_PROBABILITY = 0.10
     BURST_DURATION = (3, 8)
     PAUSE_DURATION_MS = (200, 450)
     
-    # ✅ NEW: Outlier injection
+    # Outlier injection
     OUTLIER_PROBABILITY = 0.02     # 2% of clicks
     OUTLIER_COOLDOWN = (30, 80)    # Clicks between outliers
     
@@ -107,14 +102,14 @@ class Config:
     # File Organization
     @staticmethod
     def get_training_data_path():
-        """Get path to Desktop/training_data/"""
+        """Get path to Desktop/mimic_data/"""
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        return os.path.join(desktop, "training_data")
+        return os.path.join(desktop, "mimic_data")
     
     @staticmethod
     def get_clicker_data_path():
-        """Get path to Desktop/training_data/clickerData/"""
-        return os.path.join(Config.get_training_data_path(), "clickerData")
+        """Get path to Desktop/mimic_data/mimicSessions/"""
+        return os.path.join(Config.get_training_data_path(), "mimicSessions")
     
     @staticmethod
     def get_sessions_file():
@@ -248,7 +243,7 @@ class RiskAssessor:
         }
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ✅ NEW: ENHANCED RISK VISUALIZATION
+# ENHANCED RISK VISUALIZATION
 # ═════════════════════════════════════════════════════════════════════════════
 
 class RiskVisualization:
@@ -270,9 +265,8 @@ class RiskVisualization:
             if score >= level["min"]:
                 return level
         return RiskVisualization.RISK_LEVELS[-1]  # Critical
-
 # ═════════════════════════════════════════════════════════════════════════════
-# ADAPTIVE MIXED MODE CLICKER ENGINE (✅ CLICKING LOGIC PRESERVED)
+# ADAPTIVE MIXED MODE CLICKER ENGINE (CLICKING LOGIC PRESERVED)
 # ═════════════════════════════════════════════════════════════════════════════
 
 class AdaptiveClickerEngine:
@@ -332,17 +326,17 @@ class AdaptiveClickerEngine:
         self.cps_timestamps = deque(maxlen=60)
     
     def start_clicking(self):
-        """✅ NEW: Added session re-randomization for diversity"""
+        """Session re-randomization for diversity"""
         if not self.is_actively_clicking:
             self.is_actively_clicking = True
             self.click_session_start = time.time()
             
-            # ✅ NEW: Re-randomize parameters each session
+            # Re-randomize parameters each session
             self.user_baseline = random.uniform(0.88, 1.12)
             self.drift = random.uniform(-0.15, 0.15)
             self.rhythm_phase = random.uniform(0, 2 * math.pi)
             
-            # ✅ NEW: Random startup delay (reaction time simulation)
+            # Random startup delay (reaction time simulation)
             startup_delay = abs(random.gauss(0.180, 0.045))  # 180ms ±45ms
             time.sleep(startup_delay)
     
@@ -828,7 +822,6 @@ class SessionManager:
         if mode:
             return [s for s in sessions if s.get('mode') == mode]
         return sessions
-
 # ═════════════════════════════════════════════════════════════════════════════
 # HUMAN CLICK TRACKER - WITH SESSION INTEGRATION
 # ═════════════════════════════════════════════════════════════════════════════
@@ -939,7 +932,7 @@ class HumanClickTracker:
         
         report = f"""
 ══════════════════════════════════════════════════════════════════════════════
-HUMAN CLICK ANALYSIS - {training_type} CLICKING PATTERN
+MIMIC - HUMAN CLICK ANALYSIS - {training_type} CLICKING PATTERN
 ══════════════════════════════════════════════════════════════════════════════
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Training Mode: {training_type}
@@ -1022,7 +1015,7 @@ Your Variance:             {stats['variance']:.0f}
 Your Std Deviation:        {stats['std_dev']:.2f}
 Pattern Consistency:       {'Very Consistent' if stats['variance'] < 300 else 'Moderate' if stats['variance'] < 1000 else 'Highly Variable'}
 
-RECOMMENDATION FOR AUTO-CLICKER:
+RECOMMENDATION FOR MIMIC:
 ──────────────────────────────────────────────────────────────────────────────
 """
         
@@ -1284,26 +1277,27 @@ class HistogramCanvas:
     
     def pack(self, **kwargs):
         self.canvas.pack(**kwargs)
-
 # ═════════════════════════════════════════════════════════════════════════════
-# MAIN GUI APPLICATION (✅ ENHANCED UI WITH PRESERVED LOGIC)
+# MAIN GUI APPLICATION (GHOST STEALTH REBRAND)
 # ═════════════════════════════════════════════════════════════════════════════
 
 class MinecraftAutoClickerGUI:
-    """Enhanced GUI with visual risk indicators"""
+    """Mimic - Statistical Ghost Clicker GUI"""
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Minecraft Auto Clicker v3.7")
+        self.root.title("Mimic v3.7")
         self.root.geometry("650x750")
         self.root.resizable(False, False)
         
-        # Color scheme
-        self.bgcolor = "#1e1e1e"
-        self.panel_color = "#2d2d2d"
-        self.header_color = "#252525"
-        self.fg_color = "#ffffff"
-        self.accent_color = "#4CAF50"
+        # Ghost Stealth color scheme
+        self.bgcolor = "#0D0D0D"           # Pure black background
+        self.panel_color = "#1E1E1E"       # Charcoal panels
+        self.header_color = "#1A1A1A"      # Slightly lighter header
+        self.fg_color = "#F5F5F5"          # White text
+        self.accent_color = "#4CAF50"      # Green accent
+        self.secondary_color = "#7C4DFF"   # Purple for stats
+        self.tech_accent = "#00E5FF"       # Cyan tech elements
         self.button_color = "#3d3d3d"
         self.button_hover = "#4d4d4d"
         self.inactive_color = "#888888"
@@ -1337,7 +1331,7 @@ class MinecraftAutoClickerGUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
     
     def setup_ui(self):
-        """Build complete UI with enhanced visualization"""
+        """Build complete UI with Ghost Stealth theme"""
         
         # ═══ HEADER ═══
         header_frame = tk.Frame(self.root, bg=self.header_color, height=125)
@@ -1346,7 +1340,7 @@ class MinecraftAutoClickerGUI:
         
         title = tk.Label(
             header_frame,
-            text="⚔️ Minecraft Auto Clicker v3.7",
+            text="⚙️ Mimic v3.7",
             font=("Arial", 17, "bold"),
             bg=self.header_color,
             fg=self.fg_color
@@ -1355,7 +1349,7 @@ class MinecraftAutoClickerGUI:
         
         subtitle = tk.Label(
             header_frame,
-            text="Adaptive Intelligence • Mixed Mode • Enhanced UI",
+            text="Adaptive Intelligence • Statistical Mimicry",
             font=("Arial", 8),
             bg=self.header_color,
             fg="#888888"
@@ -1373,7 +1367,7 @@ class MinecraftAutoClickerGUI:
         
         self.path_indicator = tk.Label(
             header_frame,
-            text="📁 Desktop/training_data",
+            text="📁 Desktop/mimic_data",
             font=("Arial", 7),
             bg=self.header_color,
             fg="#666666"
@@ -1470,7 +1464,7 @@ class MinecraftAutoClickerGUI:
         self.switch_page(0)
     
     def create_page_dashboard(self):
-        """✅ ENHANCED: Dashboard with visual risk indicators"""
+        """Enhanced dashboard with visual risk indicators"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -1519,7 +1513,7 @@ class MinecraftAutoClickerGUI:
         self.create_stat_card(row2, "Std Dev", "--", "std_dev_card", 1)
         self.create_stat_card(row2, "Risk Level", "--", "risk_card", 2)
         
-        # ✅ NEW: Enhanced risk visualization panel
+        # Enhanced risk visualization panel
         risk_panel = tk.Frame(page, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         risk_panel.pack(fill=tk.X, pady=(0, 8))
         
@@ -1679,7 +1673,7 @@ class MinecraftAutoClickerGUI:
         setattr(self, var_name, value_label)
     
     def create_page_settings(self):
-        """Settings page - unchanged"""
+        """Settings page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -1756,11 +1750,11 @@ class MinecraftAutoClickerGUI:
             fg=self.fg_color
         ).pack(pady=(12, 8))
         
-        path_text = """All data saves to: Desktop/training_data/
+        path_text = """All data saves to: Desktop/mimic_data/
 
 Folder Structure:
-  training_data/
-    ├── clickerData/    ← Session exports (F5/F6)
+  mimic_data/
+    ├── mimicSessions/  ← Session exports (F5/F6)
     ├── butterfly/      ← Training data (F8)
     ├── jitter/         ← Training data (F8)
     ├── normal/         ← Training data (F8)
@@ -1832,7 +1826,7 @@ Folder Structure:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
     def create_page_analytics(self):
-        """Analytics page - unchanged"""
+        """Analytics page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -1865,7 +1859,7 @@ Folder Structure:
         
         tk.Label(
             history_panel,
-            text="📜 Recent Clicker Sessions",
+            text="📜 Recent Sessions",
             font=("Arial", 11, "bold"),
             bg=self.panel_color,
             fg=self.fg_color
@@ -1922,7 +1916,7 @@ Folder Structure:
         setattr(self, var_name, value)
     
     def create_page_graphs(self):
-        """Graphs page - unchanged"""
+        """Graphs page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -1997,7 +1991,7 @@ Folder Structure:
         tk.Label(histogram_panel, text="", bg=self.panel_color, height=1).pack()
     
     def create_page_training(self):
-        """Training page - unchanged"""
+        """Training page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -2169,7 +2163,7 @@ Folder Structure:
             "• Click naturally for 30+ seconds",
             "• Minimum: 100 clicks • Recommended: 200+",
             "• Complete: 250+ clicks",
-            "• Files save to Desktop/training_data/",
+            "• Files save to Desktop/mimic_data/",
             "• View history in History tab"
         ]
         
@@ -2186,7 +2180,7 @@ Folder Structure:
         tk.Label(info_panel, text="", bg=self.panel_color, height=1).pack()
     
     def create_page_history(self):
-        """History page - unchanged"""
+        """History page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -2311,7 +2305,7 @@ Folder Structure:
         self.update_history_list()
     
     def create_page_differential(self):
-        """Differential analysis page - unchanged"""
+        """Differential analysis page"""
         page = tk.Frame(self.content_frame, bg=self.bgcolor)
         self.pages.append(page)
         
@@ -2461,7 +2455,7 @@ Folder Structure:
             self.history_list.insert("1.0", header)
             self.history_list.insert("2.0", "-" * 70 + "\n")
             
-            for session in reversed(sessions[-20:]):  # Last 20 sessions
+            for session in reversed(sessions[-20:]):
                 timestamp = session.get('timestamp', 'Unknown')
                 try:
                     dt = datetime.fromisoformat(timestamp)
@@ -2481,11 +2475,10 @@ Folder Structure:
     
     def update_differential_options(self):
         """Update dropdown options for differential analysis"""
-        # Get training sessions
         training_sessions = self.session_manager.get_training_sessions()
         training_options = []
         
-        for i, session in enumerate(reversed(training_sessions[-10:])):  # Last 10
+        for i, session in enumerate(reversed(training_sessions[-10:])):
             timestamp = session.get('timestamp', 'Unknown')
             try:
                 dt = datetime.fromisoformat(timestamp)
@@ -2505,11 +2498,10 @@ Folder Structure:
         else:
             self.human_session_menu['values'] = ["No training sessions available"]
         
-        # Get clicker sessions
         clicker_sessions = self.session_manager.get_clicker_sessions()
         clicker_options = []
         
-        for i, session in enumerate(reversed(clicker_sessions[-10:])):  # Last 10
+        for i, session in enumerate(reversed(clicker_sessions[-10:])):
             timestamp = session.get('timestamp', 'Unknown')
             try:
                 dt = datetime.fromisoformat(timestamp)
@@ -2543,11 +2535,9 @@ Folder Structure:
             messagebox.showwarning("No Selection", "Please select a bot clicker session!")
             return
         
-        # Extract session indices from dropdown selections
         training_sessions = self.session_manager.get_training_sessions()
         clicker_sessions = self.session_manager.get_clicker_sessions()
         
-        # Get the actual session data (last 10 reversed, so need to map back)
         human_idx = self.human_session_menu.current()
         bot_idx = self.bot_session_menu.current()
         
@@ -2555,7 +2545,6 @@ Folder Structure:
             messagebox.showerror("Error", "Could not find selected sessions!")
             return
         
-        # Get actual sessions (reversed list)
         available_training = list(reversed(training_sessions[-10:]))
         available_clicker = list(reversed(clicker_sessions[-10:]))
         
@@ -2566,7 +2555,6 @@ Folder Structure:
         human_session = available_training[human_idx]
         bot_session = available_clicker[bot_idx]
         
-        # Extract metrics
         h_type = human_session.get('type', 'unknown')
         h_clicks = human_session.get('total_clicks', 0)
         h_cps = human_session.get('avg_cps', 0)
@@ -2581,7 +2569,6 @@ Folder Structure:
         b_risk = bot_session.get('risk', 'UNKNOWN')
         b_score = bot_session.get('score', 0)
         
-        # Calculate gaps
         cps_gap = b_cps - h_cps
         cps_gap_pct = (cps_gap / h_cps * 100) if h_cps != 0 else 0
         
@@ -2591,8 +2578,6 @@ Folder Structure:
         std_gap = b_std - h_std
         std_gap_pct = (std_gap / h_std * 100) if h_std != 0 else 0
         
-        # Calculate realism score components
-        # Variance match (0-50 points)
         if h_type == "butterfly":
             var_target = 2200
         elif h_type == "jitter":
@@ -2601,27 +2586,25 @@ Folder Structure:
             var_target = 900
         
         var_diff_pct = abs(b_var - h_var) / h_var if h_var > 0 else 1.0
-        if var_diff_pct < 0.15:  # Within 15%
+        if var_diff_pct < 0.15:
             variance_score = 50
-        elif var_diff_pct < 0.30:  # Within 30%
+        elif var_diff_pct < 0.30:
             variance_score = 35
-        elif var_diff_pct < 0.50:  # Within 50%
+        elif var_diff_pct < 0.50:
             variance_score = 20
         else:
             variance_score = 5
         
-        # CPS match (0-30 points)
         cps_diff_pct = abs(b_cps - h_cps) / h_cps if h_cps > 0 else 1.0
-        if cps_diff_pct < 0.10:  # Within 10%
+        if cps_diff_pct < 0.10:
             cps_score = 30
-        elif cps_diff_pct < 0.20:  # Within 20%
+        elif cps_diff_pct < 0.20:
             cps_score = 20
-        elif cps_diff_pct < 0.35:  # Within 35%
+        elif cps_diff_pct < 0.35:
             cps_score = 10
         else:
             cps_score = 5
         
-        # Std dev match (0-20 points)
         std_diff_pct = abs(b_std - h_std) / h_std if h_std > 0 else 1.0
         if std_diff_pct < 0.15:
             std_score = 20
@@ -2632,37 +2615,35 @@ Folder Structure:
         
         realism_score = variance_score + cps_score + std_score
         
-        # Generate detailed report
         report = f"""
-    ╔═══════════════════════════════════════════════════════════════════════╗
-    ║                    DIFFERENTIAL ANALYSIS - HUMAN vs BOT               ║
-    ╠═══════════════════════════════════════════════════════════════════════╣
+╔═══════════════════════════════════════════════════════════════════════╗
+║              MIMIC - DIFFERENTIAL ANALYSIS - HUMAN vs BOT             ║
+╠═══════════════════════════════════════════════════════════════════════╣
 
-    SELECTED SESSIONS:
-    Human: {h_type.upper()} clicking • {h_clicks} clicks
-    Bot:   {b_mode.upper()} mode • {b_clicks} clicks
+SELECTED SESSIONS:
+  Human: {h_type.upper()} clicking • {h_clicks} clicks
+  Bot:   {b_mode.upper()} mode • {b_clicks} clicks
 
-    SIDE-BY-SIDE COMPARISON:
-    ╔═══════════════════╦══════════════════╦══════════════════╦═════════════╗
-    ║    Metric         ║   Human          ║   Bot            ║   Gap       ║
-    ╠═══════════════════╬══════════════════╬══════════════════╬═════════════╣
-    ║ Average CPS       ║    {h_cps:>8.2f}      ║    {b_cps:>8.2f}      ║  {cps_gap_pct:>7.1f}%   ║
-    ║ Variance          ║    {int(h_var):>8}      ║    {int(b_var):>8}      ║  {var_gap_pct:>7.1f}%   ║
-    ║ Std Deviation     ║    {h_std:>8.2f}      ║    {b_std:>8.2f}      ║  {std_gap_pct:>7.1f}%   ║
-    ╚═══════════════════╩══════════════════╩══════════════════╩═════════════╝
+SIDE-BY-SIDE COMPARISON:
+╔═══════════════════╦══════════════════╦══════════════════╦═════════════╗
+║    Metric         ║   Human          ║   Bot            ║   Gap       ║
+╠═══════════════════╬══════════════════╬══════════════════╬═════════════╣
+║ Average CPS       ║    {h_cps:>8.2f}      ║    {b_cps:>8.2f}      ║  {cps_gap_pct:>7.1f}%   ║
+║ Variance          ║    {int(h_var):>8}      ║    {int(b_var):>8}      ║  {var_gap_pct:>7.1f}%   ║
+║ Std Deviation     ║    {h_std:>8.2f}      ║    {b_std:>8.2f}      ║  {std_gap_pct:>7.1f}%   ║
+╚═══════════════════╩══════════════════╩══════════════════╩═════════════╝
 
-    REALISM SCORE: {realism_score}/100
-    {"🟢" if realism_score >= 70 else "🟡" if realism_score >= 50 else "🔴"} Bot Detection Risk: {b_risk} (Score: {b_score}/100)
+REALISM SCORE: {realism_score}/100
+{"🟢" if realism_score >= 70 else "🟡" if realism_score >= 50 else "🔴"} Bot Detection Risk: {b_risk} (Score: {b_score}/100)
 
-    COMPONENT SCORES:
-    • Variance Match:     {variance_score}/50 {"✅" if variance_score >= 35 else "⚠️"}
-    • CPS Similarity:     {cps_score}/30 {"✅" if cps_score >= 20 else "⚠️"}
-    • Std Dev Match:      {std_score}/20 {"✅" if std_score >= 12 else "⚠️"}
+COMPONENT SCORES:
+  • Variance Match:     {variance_score}/50 {"✅" if variance_score >= 35 else "⚠️"}
+  • CPS Similarity:     {cps_score}/30 {"✅" if cps_score >= 20 else "⚠️"}
+  • Std Dev Match:      {std_score}/20 {"✅" if std_score >= 12 else "⚠️"}
 
-    ANALYSIS:
-    """
+ANALYSIS:
+"""
         
-        # Add specific recommendations
         if realism_score >= 80:
             report += "  ✅ EXCELLENT - Bot matches human baseline very closely\n"
             report += "  • Current configuration is optimal\n"
@@ -2697,11 +2678,10 @@ Folder Structure:
             report += "  3. Compare with different human session types\n"
         
         report += """
-    ═══════════════════════════════════════════════════════════════════════════
-    💡 TIP: Record more training data to improve baseline accuracy
-    """
+═══════════════════════════════════════════════════════════════════════════
+💡 TIP: Record more training data to improve baseline accuracy
+"""
         
-        # Display results
         self.diff_results.config(state=tk.NORMAL)
         self.diff_results.delete("1.0", tk.END)
         self.diff_results.insert("1.0", report)
@@ -2718,7 +2698,6 @@ Folder Structure:
         self.pages[page_idx].pack(fill=tk.BOTH, expand=True)
         self.current_page = page_idx
         
-        # Update tab buttons
         for i, btn in enumerate(self.tab_buttons):
             if i == page_idx:
                 btn.config(bg=self.active_tab)
@@ -2727,21 +2706,19 @@ Folder Structure:
         
         self.page_indicator.config(text=f"{page_idx + 1} / {len(self.pages)}")
         
-        # Update navigation buttons
         self.prev_btn.config(state=tk.NORMAL if page_idx > 0 else tk.DISABLED)
         self.next_btn.config(state=tk.NORMAL if page_idx < len(self.pages) - 1 else tk.DISABLED)
         
-        # Update content when switching pages
-        if page_idx == 3 and self.engine:  # Graphs page
+        if page_idx == 3 and self.engine:
             if len(self.engine.cps_history) >= 2:
                 self.cps_graph.draw_graph(self.engine.cps_history, self.engine.cps_timestamps)
             if len(self.engine.all_delays) >= 5:
                 mean = sum(self.engine.all_delays) / len(self.engine.all_delays)
                 stddev = self.engine.calculate_std_dev()
                 self.histogram.draw_histogram(self.engine.all_delays, mean, stddev, self.enhanced_mode)
-        elif page_idx == 5:  # History page
+        elif page_idx == 5:
             self.update_history_list()
-        elif page_idx == 6:  # Differential page
+        elif page_idx == 6:
             self.update_differential_options()
     
     def next_page(self):
@@ -2779,19 +2756,16 @@ Folder Structure:
             return f"{hours}h {minutes}m"
     
     def update_display(self):
-        """✅ ENHANCED: Update all GUI elements with visual risk indicators"""
+        """Update all GUI elements with visual risk indicators"""
         if self.active and self.engine:
-            # Update status
             if self.clicking:
                 self.click_status.config(text="⚔️ CLICKING", fg=self.accent_color)
             else:
                 self.click_status.config(text="Waiting for MB5...", fg="#888888")
             
-            # Update timer
             elapsed = (datetime.now() - self.engine.session_start).total_seconds()
             self.session_timer.config(text=f"⏱️ {self.format_time_elapsed(elapsed)}")
             
-            # Update dashboard cards
             self.total_clicks_card.config(text=str(self.engine.total_clicks))
             
             if self.engine.total_clicks > 10:
@@ -2808,20 +2782,16 @@ Folder Structure:
                 if stats:
                     self.avg_cps_card.config(text=f"{stats['avg_cps']:.2f}")
                     
-                    # Risk assessment
                     risk_assessment = RiskAssessor.assess(stats)
                     self.risk_card.config(text=risk_assessment['risk'], fg=risk_assessment['color'])
                     
-                    # ✅ NEW: Enhanced risk visualization
                     if stats.get('total', 0) >= 20:
                         score = risk_assessment['score']
                         risk_level = RiskVisualization.get_risk_level(score)
                         
-                        # Update risk display container
                         for widget in self.risk_display_container.winfo_children():
                             widget.destroy()
                         
-                        # Score display with color
                         score_label = tk.Label(
                             self.risk_display_container,
                             text=f"{risk_level['emoji']} {score}/100 - {risk_level['label']}",
@@ -2831,10 +2801,8 @@ Folder Structure:
                         )
                         score_label.pack()
                         
-                        # Update component health indicators
                         thresholds = risk_assessment['thresholds']
                         
-                        # Variance indicator
                         if variance >= thresholds['target_variance']:
                             v_icon, v_color = "🟢", "#4CAF50"
                         elif variance >= thresholds['ideal_variance']:
@@ -2847,7 +2815,6 @@ Folder Structure:
                             fg=v_color
                         )
                         
-                        # CPS indicator
                         max_cps = stats.get('max_cps', 0)
                         if max_cps >= thresholds['spike_cps']:
                             c_icon, c_color = "🟢", "#4CAF50"
@@ -2861,7 +2828,6 @@ Folder Structure:
                             fg=c_color
                         )
                         
-                        # Pattern indicator
                         breaks = stats.get('pattern_breaks', 0)
                         total = stats.get('total', 1)
                         break_ratio = breaks / (total / 20) if total > 20 else 0
@@ -2878,14 +2844,12 @@ Folder Structure:
                             fg=p_color
                         )
                     
-                    # Analytics page
                     self.risk_level.config(text=risk_assessment['risk'], fg=risk_assessment['color'])
                     self.risk_score.config(text=f"{risk_assessment['score']}/100")
                     self.burst_events.config(text=str(stats.get('burst_count', 0)))
                     self.pause_events.config(text=str(stats.get('pause_count', 0)))
                     self.outlier_count.config(text=str(stats.get('outlier_count', 0)))
                     
-                    # Update graphs if on graphs page
                     if self.current_page == 3:
                         if len(self.engine.cps_history) >= 2:
                             self.cps_graph.draw_graph(self.engine.cps_history, self.engine.cps_timestamps)
@@ -2897,7 +2861,6 @@ Folder Structure:
             self.total_clicks_card.config(text=str(self.human_tracker.total_clicks))
             self.current_cps_card.config(text="TRAIN")
             
-            # Training progress
             clicks = self.human_tracker.total_clicks
             if clicks < Config.TRAINING_MIN_CLICKS:
                 progress = f"Progress: {clicks}/{Config.TRAINING_MIN_CLICKS} minimum"
@@ -2919,7 +2882,6 @@ Folder Structure:
                 self.session_timer.config(text=f"⏱️ {self.format_time_elapsed(elapsed)}")
         
         else:
-            # Reset display
             self.total_clicks_card.config(text="0")
             self.current_cps_card.config(text="--")
             self.variance_card.config(text="--")
@@ -2943,13 +2905,13 @@ Folder Structure:
             self.engine = AdaptiveClickerEngine(enhanced_mode=self.enhanced_mode)
             self.status_indicator.config(text="🟢 ACTIVE", fg=self.accent_color)
             self.toggle_btn.config(text="⏸ Deactivate (F4)", bg="#f44336")
-            print("\n[CLICKER] Activated - Hold MB5 to click\n")
+            print("\n[MIMIC] Activated - Hold MB5 to click\n")
         else:
             if self.engine:
                 self.engine.stop_clicking()
             self.status_indicator.config(text="⚫ INACTIVE", fg=self.inactive_color)
             self.toggle_btn.config(text="▶ Activate (F4)", bg=self.accent_color)
-            print("\n[CLICKER] Deactivated\n")
+            print("\n[MIMIC] Deactivated\n")
     
     def toggle_enhanced_mode(self):
         """Toggle enhanced mode"""
@@ -3009,9 +2971,8 @@ Folder Structure:
         if not stats:
             return
         
-        # Generate report (simplified)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"clicker_stats_{timestamp}.txt"
+        filename = f"mimic_session_{timestamp}.txt"
         filepath = os.path.join(Config.get_clicker_data_path(), filename)
         
         try:
@@ -3019,7 +2980,7 @@ Folder Structure:
             
             report = f"""
 ═══════════════════════════════════════════════════════════════════════════
-CLICKER SESSION REPORT v3.7
+MIMIC SESSION REPORT v3.7
 ═══════════════════════════════════════════════════════════════════════════
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Mode: {"Enhanced Adaptive" if stats['enhanced_mode'] else "Standard"}
@@ -3043,7 +3004,6 @@ Outliers: {stats['outlier_count']}
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(report)
             
-            # Add to session manager
             self.session_manager.add_clicker_session(stats, filepath)
             
             messagebox.showinfo("Export Success", f"Saved to:\n{filepath}")
@@ -3059,7 +3019,7 @@ Outliers: {stats['outlier_count']}
             return
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"clicker_data_{timestamp}.csv"
+        filename = f"mimic_data_{timestamp}.csv"
         filepath = os.path.join(Config.get_clicker_data_path(), filename)
         
         try:
@@ -3086,10 +3046,7 @@ Outliers: {stats['outlier_count']}
         """Start background threads"""
         self.running = True
         
-        # Mouse button listener thread
         threading.Thread(target=self.mouse_button_listener, daemon=True).start()
-        
-        # Clicking thread
         threading.Thread(target=self.clicking_loop, daemon=True).start()
     
     def mouse_button_listener(self):
@@ -3106,7 +3063,6 @@ Outliers: {stats['outlier_count']}
                         self.clicking = False
                         self.engine.stop_clicking()
             
-            # Training mode click recording
             if self.human_tracker.is_tracking:
                 left_state = win32api.GetAsyncKeyState(Config.VK_LBUTTON)
                 if left_state & 0x8000:
@@ -3138,27 +3094,28 @@ Outliers: {stats['outlier_count']}
 
 if __name__ == "__main__":
     print("""
-    ═══════════════════════════════════════════════════════════════════════════
-    ⚔️  MINECRAFT AUTO CLICKER v3.7 - ENHANCED UI
-    ═══════════════════════════════════════════════════════════════════════════
+    ═══════════════════════════════════════════════════════════════════════
     
-    NEW IN v3.7:
-      ✅ 6-Level Color-Coded Risk Display (🟢🟡🔴)
-      ✅ Component Health Indicators
-      ✅ Real-time Visual Feedback
-      ✅ Session Re-Randomization
+            ███╗   ███╗██╗███╗   ███╗██╗ ██████╗
+            ████╗ ████║██║████╗ ████║██║██╔════╝
+            ██╔████╔██║██║██╔████╔██║██║██║     
+            ██║╚██╔╝██║██║██║╚██╔╝██║██║██║     
+            ██║ ╚═╝ ██║██║██║ ╚═╝ ██║██║╚██████╗
+            ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝╚═╝ ╚═════╝
+                                                    
+                      Statistical Ghost Clicker
+                             v3.7.0
     
-    CONTROLS:
-      F4  - Toggle On/Off
-      MB5 - Hold to Click
-      F5  - Export Stats
-      F6  - Export CSV
-      F7  - Training Mode
-      F8  - Export Training
-      ← → - Navigate Pages
+    ═══════════════════════════════════════════════════════════════════════
     
-    ⚠️  Use at your own risk. For educational purposes only.
-    ═══════════════════════════════════════════════════════════════════════════
+    🎯 LAUNCH SEQUENCE
+       • Loading adaptive engine...
+       • Initializing statistical distributions...
+       • Starting GUI...
+    
+    ⚠️  Educational purposes only. Use at your own risk.
+    
+    ═══════════════════════════════════════════════════════════════════════
     """)
     
     app = MinecraftAutoClickerGUI()
