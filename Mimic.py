@@ -1,25 +1,22 @@
 """
 ═══════════════════════════════════════════════════════════════════════════════
-MIMIC v3.7 - STATISTICAL GHOST CLICKER
+MIMIC v3.7 
 ═══════════════════════════════════════════════════════════════════════════════
-Version: 3.7.0 - Enhanced UI Update
 Target: 7-12 CPS average with 15-16 CPS spikes
 
-KEY FEATURES:
-  ✅ Adaptive Mixed Mode (butterfly/jitter/normal)
-  ✅ Statistical Distribution Engine (Gaussian + Weibull)
-  ✅ Variance Targeting (1,500-2,500)
-  ✅ 2% Outlier Injection
-  ✅ Real-time Risk Assessment
-  ✅ Enhanced Visual Feedback
+FEATURES:
+  Adaptive Mixed Mode (butterfly/jitter/normal)
+  Statistical Distribution Engine (Gaussian + Weibull)
+  Variance Targeting (1,500-2,500)
+  2% Outlier Injection
+  Real-time Risk Assessment
   
 File Organization:
   mimic_data/
-    ├── mimicSessions/   ← Auto-clicker exports (F5/F6)
+    ├── mimicSessions/   ← Auto-clicker data (F5/F6)
     ├── butterfly/       ← Human training data
     ├── jitter/          ← Human training data
     ├── normal/          ← Human training data
-    ├── mixed/           ← Human training data
     └── sessions.json    ← Session history database
   
 Controls:
@@ -43,25 +40,25 @@ from tkinter import ttk, messagebox
 import os
 import csv
 import json
-
 import win32api
 import win32con
 from pynput import mouse
+
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═════════════════════════════════════════════════════════════════════════════
-
+# Enhanced mode is just the default mode now and I'm too lazy to make the variable names reflect that
 class Config:
     """Global configuration with realistic anti-cheat thresholds"""
     
     # Relaxed CPS limits (allow spikes)
-    ABSOLUTE_MIN_DELAY_MS = 65   # 15.4 CPS spike allowed
-    ABSOLUTE_MAX_DELAY_MS = 400  # Extended pauses for realism
+    ABSOLUTE_MIN_DELAY_MS = 65   # 15.4 CPS spike
+    ABSOLUTE_MAX_DELAY_MS = 167  # Extended pauses for  (Old 300, revert if click timing is weird)
     SUSTAINED_CPS_CAP = 12       # Average shouldn't sustain >12
     
     # Enhanced Mode has wider range
     ENHANCED_MIN_DELAY_MS = 60   # 16.7 CPS burst maximum
-    ENHANCED_MAX_DELAY_MS = 450  # Longer pauses
+    ENHANCED_MAX_DELAY_MS = 300  # Longer pauses
     
     # Realistic variance targets
     ENHANCED_IDEAL_VARIANCE = 1500   # Minimum acceptable
@@ -80,7 +77,7 @@ class Config:
     TECHNIQUE_TRANSITION_MIN = 5   # Min clicks before switching
     TECHNIQUE_TRANSITION_MAX = 15  # Max clicks before switching
     
-    # Enhanced Mode Parameters
+    # Click mode Parameters
     BURST_PROBABILITY = 0.20
     PAUSE_PROBABILITY = 0.02
     BURST_DURATION = (3, 8)
@@ -162,7 +159,7 @@ class RiskAssessor:
         pattern_breaks = stats.get('pattern_breaks', 0)
         total_clicks = stats.get('total', 1)
         
-        score = 0
+        score = 0 # Constantly check score to ensure variance is within tolerance
         issues = []
         recommendations = []
         
@@ -243,7 +240,7 @@ class RiskAssessor:
         }
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ENHANCED RISK VISUALIZATION
+# RISK VISUALIZATION
 # ═════════════════════════════════════════════════════════════════════════════
 
 class RiskVisualization:
@@ -264,9 +261,13 @@ class RiskVisualization:
         for level in RiskVisualization.RISK_LEVELS:
             if score >= level["min"]:
                 return level
-        return RiskVisualization.RISK_LEVELS[-1]  # Critical
+        return RiskVisualization.RISK_LEVELS[-1] 
 # ═════════════════════════════════════════════════════════════════════════════
-# ADAPTIVE MIXED MODE CLICKER ENGINE (CLICKING LOGIC PRESERVED)
+# ADAPTIVE CLICKER ENGINE
+# NOTES: 
+# * Still need to figure out why the analysis returns seemingly wrong CPS
+#   values. In game CPS mods and online CPS tests give me results different 
+#   than what I calculate, but even AI agrees my logic is sound? What the fuck.
 # ═════════════════════════════════════════════════════════════════════════════
 
 class AdaptiveClickerEngine:
@@ -337,7 +338,7 @@ class AdaptiveClickerEngine:
             self.rhythm_phase = random.uniform(0, 2 * math.pi)
             
             # Random startup delay (reaction time simulation)
-            startup_delay = abs(random.gauss(0.180, 0.045))  # 180ms ±45ms
+            startup_delay = abs(random.gauss(0.180, 0.45))  # 90ms ±25ms - EDIT: Lowered delay value by 90ms and - ±20ms
             time.sleep(startup_delay)
     
     def stop_clicking(self):
@@ -356,7 +357,7 @@ class AdaptiveClickerEngine:
             total += time.time() - self.click_session_start
         return total
     
-    def gaussian_random(self, mean, std_dev):
+    def gaussian_random(self, mean, std_dev): # Goofy ahh math -3years of lifespan
         """Box-Muller transform for Gaussian distribution"""
         u1, u2 = random.random(), random.random()
         rand_std_normal = math.sqrt(-2.0 * math.log(u1)) * math.sin(2.0 * math.pi * u2)
@@ -368,7 +369,7 @@ class AdaptiveClickerEngine:
         return scale * ((-math.log(1 - u)) ** (1 / shape))
     
     def check_cps(self):
-        """Allow spikes, prevent sustained high CPS"""
+        """Allows spikes, prevent sustaining high CPS for too long"""
         current_time = time.time()
         
         # Clean old entries
@@ -503,7 +504,7 @@ class AdaptiveClickerEngine:
         # Choose outlier type (weighted)
         outlier_type = random.choices(
             ["micro_pause", "panic_burst", "dead_click"],
-            weights=[0.70, 0.20, 0.10]
+            weights=[0.70, 0.20, 0.10] # Might change the weights to negate the chance of missing hit timings
         )[0]
         
         self.outlier_cooldown = random.randint(*Config.OUTLIER_COOLDOWN)
@@ -517,12 +518,12 @@ class AdaptiveClickerEngine:
         # Check for outlier injection
         outlier = self.should_inject_outlier()
         if outlier == "micro_pause":
-            final = random.uniform(200, 350)
+            final = random.uniform(120, 160)
             self.click_history.append(final)
             self.all_delays.append(final)
             return final
         elif outlier == "dead_click":
-            final = random.uniform(500, 800)
+            final = random.uniform(140, 180)
             self.click_history.append(final)
             self.all_delays.append(final)
             return final
@@ -604,7 +605,7 @@ class AdaptiveClickerEngine:
         self.drift = max(-drift_limit, min(drift_limit, self.drift))
         base *= (1.0 + self.drift)
         
-        # Rhythm oscillation
+        # Rhythm oscillation - Math :(
         self.rhythm_phase = (self.rhythm_phase + random.uniform(0.20, 0.60)) % (2 * math.pi)
         rhythm_amount = 25 if self.enhanced_mode else 18
         base += math.sin(self.rhythm_phase) * rhythm_amount
@@ -827,7 +828,7 @@ class SessionManager:
 # ═════════════════════════════════════════════════════════════════════════════
 
 class HumanClickTracker:
-    """Tracks legitimate human clicks for baseline analysis"""
+    """Tracks legitimate clicks for baseline analysis"""
     
     def __init__(self, session_manager):
         self.session_manager = session_manager
@@ -838,6 +839,10 @@ class HumanClickTracker:
         self.last_click_time = None
         self.total_clicks = 0
         self.training_type = "normal"
+        
+        # Win32 hook variables
+        self.hook_id = None
+        self.hook_callback = None
     
     def start_tracking(self, training_type="normal"):
         self.is_tracking = True
@@ -847,23 +852,105 @@ class HumanClickTracker:
         self.click_delays = []
         self.last_click_time = None
         self.total_clicks = 0
-        print(f"\n[TRAINING MODE: {training_type.upper()}] Recording your clicks...\n")
+        
+        self._install_mouse_hook()
+        print(f"\n[TRAINING MODE: {training_type.upper()}] Recording with Win32 hook (high-precision)...\n")
     
     def stop_tracking(self):
         self.is_tracking = False
+        self._uninstall_mouse_hook()
         print(f"\n[TRAINING MODE: {self.training_type.upper()}] Stopped recording.\n")
     
+    def _install_mouse_hook(self):
+        """Install low-level mouse hook for precise click tracking"""
+        import ctypes
+        from ctypes import wintypes
+        
+        HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+        
+        def mouse_hook_proc(nCode, wParam, lParam):
+            if nCode >= 0 and self.is_tracking:
+                if wParam == 0x0201:  # WM_LBUTTONDOWN
+                    self._record_click_precise()
+            
+            return ctypes.windll.user32.CallNextHookEx(self.hook_id, nCode, wParam, lParam)
+        
+        self.hook_callback = HOOKPROC(mouse_hook_proc)
+        
+        self.hook_id = ctypes.windll.user32.SetWindowsHookExA(
+            14,  # WH_MOUSE_LL
+            self.hook_callback,
+            ctypes.windll.kernel32.GetModuleHandleW(None),
+            0
+        )
+        
+        if not self.hook_id:
+            print("[WARNING] Failed to install mouse hook - falling back to manual tracking")
+    
+    def _uninstall_mouse_hook(self):
+        """Remove mouse hook"""
+        if self.hook_id:
+            import ctypes
+            ctypes.windll.user32.UnhookWindowsHookEx(self.hook_id)
+            self.hook_id = None
+            self.hook_callback = None
+    
+    def _record_click_precise(self):
+        """High-precision click recording via Win32 hook"""
+        current_time = time.perf_counter()
+        self.click_times.append(current_time)
+        self.total_clicks += 1
+        
+        if self.last_click_time is not None:
+            delay_ms = (current_time - self.last_click_time) * 1000
+            # FIX: Lowered to 1ms to capture ultra-fast butterfly clicks
+            if 1 <= delay_ms < 2000:
+                self.click_delays.append(delay_ms)
+        
+        self.last_click_time = current_time
+    
     def record_click(self):
+        """Fallback method if hook fails"""
         if not self.is_tracking:
             return
-        current_time = time.time()
+        current_time = time.perf_counter()
         self.click_times.append(current_time)
         self.total_clicks += 1
         if self.last_click_time is not None:
             delay_ms = (current_time - self.last_click_time) * 1000
-            if delay_ms < 500:
+            if 1 <= delay_ms < 2000:
                 self.click_delays.append(delay_ms)
         self.last_click_time = current_time
+    
+    def get_rolling_cps(self, window_seconds=1.0):
+        """Calculate CPS using rolling window (like Minecraft mods)"""
+        if len(self.click_times) < 2:
+            return 0.0
+        
+        # FIX: Use last click time, not current time
+        last_click = self.click_times[-1]
+        cutoff_time = last_click - window_seconds
+        
+        recent_clicks = sum(1 for t in self.click_times if t >= cutoff_time)
+        
+        return recent_clicks / window_seconds
+    
+    def get_max_rolling_cps(self, window_seconds=1.0):
+        """Get peak CPS during session using rolling window"""
+        if len(self.click_times) < 10:
+            return 0.0
+        
+        max_cps = 0.0
+        
+        for i in range(len(self.click_times)):
+            timestamp = self.click_times[i]
+            cutoff = timestamp - window_seconds
+            
+            clicks_in_window = sum(1 for t in self.click_times if cutoff <= t <= timestamp)
+            cps = clicks_in_window / window_seconds
+            max_cps = max(max_cps, cps)
+        
+        return max_cps
     
     def calculate_variance(self):
         if len(self.click_delays) < 10:
@@ -884,13 +971,23 @@ class HumanClickTracker:
         p90 = sorted_delays[int(len(sorted_delays) * 0.90)]
         session_duration = (datetime.now() - self.session_start).total_seconds()
         
+        capture_rate = len(delays) / self.total_clicks if self.total_clicks > 0 else 0
+        
+        # Calculate rolling window CPS
+        max_rolling_cps = self.get_max_rolling_cps(1.0)
+        
+        # FIX: Calculate average CPS from total clicks and time, not from delays
+        avg_cps = len(self.click_times) / session_duration if session_duration > 0 else 0
+        
         return {
             "total": self.total_clicks,
             "valid_delays": len(delays),
-            "avg_cps": 1000.0 / avg_delay,
+            "capture_rate": capture_rate,
+            "avg_cps": avg_cps,  # FIXED: Now uses total clicks / time
             "min_cps": 1000.0 / max(delays),
             "max_cps": 1000.0 / min(delays),
             "median_cps": 1000.0 / p50,
+            "peak_cps": max_rolling_cps,
             "variance": self.calculate_variance(),
             "std_dev": math.sqrt(self.calculate_variance()),
             "session_duration": session_duration,
@@ -928,9 +1025,14 @@ class HumanClickTracker:
             messagebox.showwarning("Insufficient Data", f"Need at least 10 valid clicks!\n\nCurrent clicks: {self.total_clicks}")
             return
         
-        training_type = stats['training_type'].upper()
+        if stats['capture_rate'] < 0.95:
+            capture_pct = stats['capture_rate'] * 100
+            missed_clicks = stats['total'] - stats['valid_delays']
+            print(f"[WARNING] Capture rate: {capture_pct:.1f}% ({missed_clicks} clicks missed/filtered)\n")
         
-        report = f"""
+        training_type = stats['training_type'].upper()
+        # So tedious :(
+        report = f""" 
 ══════════════════════════════════════════════════════════════════════════════
 MIMIC - HUMAN CLICK ANALYSIS - {training_type} CLICKING PATTERN
 ══════════════════════════════════════════════════════════════════════════════
@@ -938,20 +1040,29 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 Training Mode: {training_type}
 Click Type: {"Butterfly (2 fingers alternating)" if stats['training_type'] == 'butterfly' else "Jitter (rapid wrist/arm)" if stats['training_type'] == 'jitter' else "Normal (single finger)" if stats['training_type'] == 'normal' else "Mixed Techniques"}
 
+
 SESSION OVERVIEW
 ──────────────────────────────────────────────────────────────────────────────
 Total Clicks Recorded:     {stats['total']}
 Valid Click Intervals:     {stats['valid_delays']}
+Capture Rate:              {stats['capture_rate']*100:.1f}%
 Session Duration:          {stats['session_duration']:.1f} seconds
 
-Average CPS:               {stats['avg_cps']:.2f}
+
+Peak CPS (1s window):      {stats['peak_cps']:.2f}  
+Session Average CPS:       {stats['avg_cps']:.2f}
 Median CPS:                {stats['median_cps']:.2f}
+
 
 CPS STATISTICS
 ──────────────────────────────────────────────────────────────────────────────
+Peak 1-Second CPS:         {stats['peak_cps']:.2f}
+Session Average CPS:       {stats['avg_cps']:.2f}
+Median CPS:                {stats['median_cps']:.2f}
 Minimum CPS:               {stats['min_cps']:.2f}
-Maximum CPS:               {stats['max_cps']:.2f}
+Maximum CPS (instant):     {stats['max_cps']:.2f}
 CPS Range:                 {stats['min_cps']:.2f} - {stats['max_cps']:.2f}
+
 
 DELAY STATISTICS (milliseconds)
 ──────────────────────────────────────────────────────────────────────────────
@@ -962,18 +1073,19 @@ Median Delay (P50):        {stats['p50_delay']:.2f} ms
 Min Delay:                 {stats['min_delay']:.2f} ms
 Max Delay:                 {stats['max_delay']:.2f} ms
 
+
 HUMAN BEHAVIOR METRICS
 ──────────────────────────────────────────────────────────────────────────────
 Variance:                  {stats['variance']:.0f}
 Standard Deviation:        {stats['std_dev']:.2f}
 Consistency:               {'High' if stats['variance'] < 200 else 'Moderate' if stats['variance'] < 400 else 'Variable' if stats['variance'] < 1500 else 'Highly Variable'}
 
+
 ══════════════════════════════════════════════════════════════════════════════
 CLICK TYPE CHARACTERISTICS - {training_type}
 ══════════════════════════════════════════════════════════════════════════════
 """
         
-        # Click-type specific analysis
         if stats['training_type'] == 'butterfly':
             report += """
 BUTTERFLY CLICKING PATTERN:
@@ -1008,12 +1120,15 @@ MIXED CLICKING PATTERN:
         
         report += f"""
 
+
 YOUR {training_type} PATTERN ANALYSIS:
 ──────────────────────────────────────────────────────────────────────────────
+Your Peak CPS (1s):        {stats['peak_cps']:.2f}
 Your Average CPS:          {stats['avg_cps']:.2f}
 Your Variance:             {stats['variance']:.0f}
 Your Std Deviation:        {stats['std_dev']:.2f}
 Pattern Consistency:       {'Very Consistent' if stats['variance'] < 300 else 'Moderate' if stats['variance'] < 1000 else 'Highly Variable'}
+
 
 RECOMMENDATION FOR MIMIC:
 ──────────────────────────────────────────────────────────────────────────────
@@ -1034,30 +1149,25 @@ FILE SAVED TO DESKTOP
         
         print(report)
         
-        # Create organized filename
         training_type_safe = stats['training_type'].lower().replace(' ', '_')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         txt_filename = f"{training_type_safe}_baseline_{timestamp}.txt"
         csv_filename = f"{training_type_safe}_baseline_{timestamp}.csv"
         
-        # Use Desktop path
         folder_path = os.path.join(Config.get_training_data_path(), training_type_safe)
         
         try:
             os.makedirs(folder_path, exist_ok=True)
             
-            # Save TXT report with UTF-8 encoding
             txt_full_path = os.path.join(folder_path, txt_filename)
             with open(txt_full_path, 'w', encoding='utf-8') as f:
                 f.write(report)
             print(f"[SUCCESS] TXT report saved to: {txt_full_path}\n")
             
-            # Save CSV data with UTF-8 encoding
             csv_full_path = os.path.join(folder_path, csv_filename)
             self.export_to_csv(csv_full_path)
             print(f"[SUCCESS] CSV data saved to: {csv_full_path}\n")
             
-            # Add to session manager
             self.session_manager.add_training_session(stats, txt_full_path)
             
             messagebox.showinfo("Export Successful", f"Training data exported!\n\n📁 {folder_path}")
@@ -1065,6 +1175,7 @@ FILE SAVED TO DESKTOP
         except Exception as e:
             print(f"[ERROR] Export failed: {e}\n")
             messagebox.showerror("Export Failed", f"Could not save files:\n{e}")
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 # VISUALIZATION COMPONENTS
@@ -1278,7 +1389,7 @@ class HistogramCanvas:
     def pack(self, **kwargs):
         self.canvas.pack(**kwargs)
 # ═════════════════════════════════════════════════════════════════════════════
-# MAIN GUI APPLICATION (GHOST STEALTH REBRAND)
+# MAIN GUI APPLICATION (MIMIC REBRAND 2025-12-19)
 # ═════════════════════════════════════════════════════════════════════════════
 
 class MinecraftAutoClickerGUI:
@@ -1290,7 +1401,8 @@ class MinecraftAutoClickerGUI:
         self.root.geometry("650x750")
         self.root.resizable(False, False)
         
-        # Ghost Stealth color scheme
+        # "Ghost Stealth" color scheme from the first pallette generator i clicked on google
+        
         self.bgcolor = "#0D0D0D"           # Pure black background
         self.panel_color = "#1E1E1E"       # Charcoal panels
         self.header_color = "#1A1A1A"      # Slightly lighter header
@@ -1339,7 +1451,7 @@ class MinecraftAutoClickerGUI:
         if injected:
             return
         
-        # Only track PHYSICAL left button
+        # Only track PHYSICAL left button clicks
         if button == mouse.Button.left:
             self.physical_left_held = pressed
             # Uncomment for debugging:
@@ -1366,7 +1478,7 @@ class MinecraftAutoClickerGUI:
         
         subtitle = tk.Label(
             header_frame,
-            text="Adaptive Intelligence • Statistical Mimicry",
+            text="Statistical Mimicry",
             font=("Arial", 8),
             bg=self.header_color,
             fg="#888888"
@@ -1808,7 +1920,7 @@ Folder Structure:
             ("F5", "Export TXT"),
             ("F6", "Export CSV"),
             ("← →", "Switch Pages"),
-            #("Enter", "Quick Toggle"), #DISABLED
+            #("Enter", "Quick Toggle"), # DISABLED, redundant for now. 
             ("F7", "Train Start/Stop"),
             ("F8", "Export Baseline"),
             ("F9", "Toggle Enhanced"),
@@ -2778,7 +2890,7 @@ ANALYSIS:
             if self.clicking:
                 self.click_status.config(text="⚔️ CLICKING", fg=self.accent_color)
             else:
-                self.click_status.config(text="Waiting for MB5...", fg="#888888")
+                self.click_status.config(text="Waiting for MB1...", fg="#888888")
             
             elapsed = (datetime.now() - self.engine.session_start).total_seconds()
             self.session_timer.config(text=f"⏱️ {self.format_time_elapsed(elapsed)}")
@@ -3098,14 +3210,13 @@ Outliers: {stats['outlier_count']}
                 if self.physical_left_held:
                     if not self.clicking:
                         self.clicking = True
-                        if self.engine:  # Double-check before calling
-                            self.engine.start_clicking()
                         print("[MIMIC] Started auto-clicking")
+                        # REMOVED: self.engine.start_clicking() <-- THIS WAS THE 90ms DELAY
                     
                     # Send synthetic click - CHECK ENGINE EXISTS
                     if self.engine:  # Add this check
                         self.engine.click()
-                    
+                
                 else:
                     if self.clicking:
                         self.clicking = False
@@ -3115,7 +3226,6 @@ Outliers: {stats['outlier_count']}
                     time.sleep(0.01)
             else:
                 time.sleep(0.01)
-
 
 
     def on_close(self):
@@ -3144,7 +3254,6 @@ if __name__ == "__main__":
             ██║ ╚═╝ ██║██║██║ ╚═╝ ██║██║╚██████╗
             ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝╚═╝ ╚═════╝
                                                     
-                      Statistical Ghost Clicker
                              v3.7.0
     
     ═══════════════════════════════════════════════════════════════════════
