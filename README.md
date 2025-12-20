@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
 ![License](https://img.shields.io/badge/License-Educational-orange.svg)
 
-> **Adaptive Intelligence • Statistical Mimicry**
+> **Statistical Mimicry**
 
 Mimic is a sophisticated auto-clicker designed for Minecraft PvP that uses statistical distributions and adaptive algorithms to replicate human clicking patterns. Built specifically to target anti-cheat systems like MMC's AGC with variance-based detection.
 
