@@ -38,11 +38,11 @@ Mimic is a sophisticated auto-clicker designed for Minecraft PvP that uses stati
 ## Requirements
 
 Python 3.8+
+```cmd
 pip install pywin32
 pip install pynput
 pip install keyboard
-
-text
+```
 
 **Platform:** Windows only (uses Win32 API for mouse events)
 
