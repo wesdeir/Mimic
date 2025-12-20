@@ -138,22 +138,6 @@ Based on anti-cheat research for 1.8.9 PvP servers [web:75][web:84]:
 
 ---
 
-## File Organization
-
-Desktop/mimic_data/
-├── mimicSessions/ # Auto-clicker exports (F5/F6)
-│ ├── mimic_session_.txt
-│ └── mimic_data_.csv
-├── butterfly/ # Training data
-├── jitter/ # Training data
-├── normal/ # Training data
-├── mixed/ # Training data
-└── sessions.json # Session history database
-
-text
-
----
-
 ## Advanced Tuning
 
 Accessible in **Settings → Advanced Tuning**:
