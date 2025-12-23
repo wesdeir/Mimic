@@ -108,7 +108,7 @@ class Config:
     def get_training_data_path():
         """Get path to Desktop/mimic_data/"""
         desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        return os.path.join(desktop, "mimic_data")
+        return os.path.join(desktop, "Mimic","mimic_data")
     
     @staticmethod
     def get_clicker_data_path():
@@ -2192,7 +2192,7 @@ class MinecraftAutoClickerGUI:
         path_text = """All data saves to: Desktop/mimic_data/
 
 Folder Structure:
-  mimic_data/
+  Mimic/mimic_data/
     ├── mimicSessions/  ← Session exports (F5/F6)
     ├── butterfly/      ← Training data (F8)
     ├── jitter/         ← Training data (F8)

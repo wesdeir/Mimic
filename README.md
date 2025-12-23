@@ -8,210 +8,89 @@ This project includes two core components:
 
 ## Features
 
-### **Core Functionality**
-- **Hold-to-Click Activation** - Natural left-click hold interface using pynput [web:112]
-- **Adaptive Mixed Mode** - Dynamically blends butterfly/jitter/normal clicking techniques
-- **Statistical Engine** - Gaussian (Box-Muller) + Weibull distributions for realistic delays
-- **Variance Targeting** - Configurable 1,500-2,500 variance range (optimal for AGC bypass)
-- **Real-Time Risk Assessment** - Live detection risk scoring (0-100)
+### Mimic Engine (Mimic.py)
+*   **Statistical Mimicry**: Utilizes Box-Muller transforms and Weibull distributions to generate non-deterministic click intervals.
+*   **Adaptive Mixed Mode**: Dynamically switches between three distinct clicking techniques (Butterfly, Jitter, Normal) during operation to prevent pattern detection.
+*   **Real-time Risk Assessment**: Continuously evaluates the generated click stream against common anti-cheat heuristics (Variance, Standard Deviation, Pattern Breaks) and assigns a safety score (0-100).
+*   **Human Training Mode**: Records legitimate user input via low-level Windows hooks to build personalized baseline profiles.
+*   **Preset System**: Includes pre-configured profiles (Conservative, Balanced, Aggressive) and supports custom user configurations.
+*   **Visual Analytics**: Live CPS graphing and click delay distribution histograms.
 
-### **Anti-Detection Systems**
-- Pattern break detection with dynamic adjustment
-- 2% outlier injection (micro-pauses, panic bursts)
-- Session re-randomization for behavioral diversity
-- Drift accumulation and rhythm oscillation
-- Configurable burst/pause mechanics
+### Benchmark Tool (MimicBenchmarkTool.py)
+*   **Granular Analysis**: Detailed breakdown of click timings, including percentile analysis (P10, P50, P90).
+*   **Fatigue Tracking**: Monitors CPS degradation over time to identify stamina limits.
+*   **Burst Detection**: Identifies and analyzes high-frequency micro-bursts and double-click events.
+*   **Data Export**: Automatically generates CSV datasets and detailed statistical text reports for every session.
 
-### **Analysis & Training**
-- Real-time CPS graphing and delay distribution histograms
-- Human baseline training mode (butterfly/jitter/normal)
-- Differential analysis (compare human vs bot patterns)
-- Session history tracking with JSON persistence
-- CSV/TXT export for external analysis
+## Prerequisites
 
----
+*   Python 3.8 or higher
+*   Windows OS (Required for `pywin32` hooks)
 
-## Requirements
+### Dependencies
 
-Python 3.8+
-```cmd
-pip install pywin32
-pip install pynput
-pip install keyboard
+Install the required Python packages:
+
+```
+pip install pynput pywin32 keyboard
 ```
 
-**Platform:** Windows only (uses Win32 API for mouse events)
+*Note: Tkinter is required for the GUI and is typically included with standard Python installations.*
 
----
+## Installation
 
-## Quick Start
+1.  Clone the repository or download the source files.
+2.  Ensure both `Mimic.py` and `MimicBenchmarkTool.py` are in the same directory.
+3.  Run the scripts directly via Python.
 
-1. **Install dependencies:**
+## Usage
 
-python -m pip install pywin32 pynput keyboard
+### Running the Auto-Clicker
+Execute the main script:
+```
+python Mimic.py
+```
 
-text
+**Controls:**
+*   **F4**: Toggle Clicking On/Off
+*   **F9**: Toggle Enhanced Adaptive Mode
+*   **F7**: Start/Stop Training Mode (Recording)
+*   **F8**: Export Training Data
+*   **F5/F6**: Export Session Statistics (TXT/CSV)
 
-2. **Run Mimic:**
+**Dashboard Overview:**
+The GUI provides real-time feedback on your risk level. Keep an eye on the **Risk Score**; a score below 50 indicates a clicking pattern that is mathematically unlikely to be human and may trigger detection systems.
 
-python mimic.py
+### Running the Benchmark Tool
+You can launch the benchmark tool directly from the Mimic GUI (Training Tab) or run it standalone:
+```
+python MimicBenchmarkTool.py
+```
+Select a test duration, click "Start Test", and click as fast as possible to generate a performance report.
 
-text
+## Configuration & Output
 
-3. **Activate & Click:**
-- Press `F4` to enable
-- Hold `LEFT CLICK` to auto-click
-- Release to stop
+### Data Storage
+All data is automatically organized in your user Desktop directory:
+*   `Desktop/mimic_data/`: Stores session logs, training baselines, and configuration files.
+*   `Desktop/click_data/`: Stores benchmark CSVs and analysis reports.
 
----
+### Presets
+Mimic ships with three default presets:
+1.  **Conservative**: High variance, lower CPS caps. Designed for strict anti-cheat environments.
+2.  **Balanced**: Moderate speed with standard deviation targets derived from average player data.
+3.  **Aggressive**: Prioritizes speed over variance. Higher risk of detection but maximizes throughput.
 
-## Keyboard Controls
+Custom presets can be saved and will persist in `mimic_data/custom_presets.json`.
 
-| Key | Action |
-|-----|--------|
-| `F4` | Toggle On/Off |
-| `LEFT CLICK` | Auto-Click (Hold) |
-| `F5` | Export TXT Stats |
-| `F6` | Export CSV Data |
-| `F7` | Start/Stop Training |
-| `F8` | Export Training Data |
-| `F9` | Toggle Enhanced Mode |
-| `F10` | Mini Mode (Coming Soon) |
-| `← →` | Navigate Pages |
-| `Enter` | Quick Toggle |
+## Technical Architecture
 
----
+### Event Injection
+Mimic uses `win32api` and `win32con` for input injection rather than high-level wrappers. This allows for precise control over "press" and "release" timings, enabling the simulation of realistic pressure duration (mouse down/up intervals), which is a common vector for detection in simpler macro tools.
 
-## GUI Overview
-
-### **7-Tab Interface:**
-1. **Dashboard** - Live stats, risk assessment, quick actions
-2. **Settings** - Mode configuration, export paths, controls
-3. **Analytics** - Detection metrics, session history
-4. **Graphs** - Real-time CPS line graph, delay histograms
-5. **Training** - Record human baseline clicking patterns
-6. **History** - View all training sessions
-7. **Compare** - Differential analysis (human vs bot)
-
----
-
-## Target Metrics
-
-### **Enhanced Mode (Recommended)**
-- **CPS Range:** 7-12 average, 15-16 spikes allowed
-- **Target Variance:** 2,200 (optimal for AGC)
-- **Acceptable Range:** 1,500-3,500
-- **Detection Risk:** LOW (score 80+)
-
-### **Standard Mode**
-- **CPS Range:** 5-9 average, 11-13 spikes
-- **Target Variance:** 900
-- **Acceptable Range:** 600-1,500
-- **Detection Risk:** LOW (score 70+)
-
----
-
-## Testing Strategy
-
-Based on anti-cheat research for 1.8.9 PvP servers [web:75][web:84]:
-
-### **Phase 1: Hypixel (Week 1)**
-- Server: `mc.hypixel.net`
-- Anti-Cheat: Watchdog
-- Goal: 30+ minute sessions undetected
-- Game Modes: Duels → BedWars/SkyWars
-
-### **Phase 2: Extended Testing (Week 2)**
-- Increase to 1-2 hour sessions
-- Monitor variance/CPS when flagged (if any)
-- Adjust settings based on results
-
-### **Phase 3: MMC Final Test (Week 3+)**
-- Server: `na.minemen.club` / `eu.minemen.club`
-- Anti-Cheat: AGC (AntiGamingChair) - Most strict
-- Goal: 30+ minutes undetected = success
-- **Use alt accounts for testing**
-
----
-
-## Advanced Tuning
-
-Accessible in **Settings → Advanced Tuning**:
-
-- **Pause Probability:** 0-20% (default: 10%)
-- **Pause Duration:** 50-500ms (default: 200-450ms)
-- **Burst Probability:** 0-50% (default: 20%)
-- **Target Variance:** 800-3500 (default: 2200)
-
-Fine-tune these during gameplay to balance hit registration vs detection risk.
-
----
+### Pattern Generation
+The engine implements a **Drift and Rhythm** system. Instead of random noise, the click delay drifts over time (simulating focus loss/gain) and oscillates slightly (simulating natural biological rhythms), significantly increasing the complexity of the output data stream.
 
 ## Disclaimer
 
-**Educational purposes only.** This tool is designed for:
-- Understanding anti-cheat detection systems
-- Statistical analysis of human input patterns
-- Research into behavioral biometrics
-
-Use at your own risk. The author is not responsible for any bans or violations of server terms of service.
-
----
-
-## Technical Details
-
-### **Statistical Methods:**
-- **Box-Muller Transform** - Gaussian random distribution
-- **Weibull Distribution** - Long-tail delay modeling
-- **Rolling Window Variance** - Pattern consistency analysis
-- **Drift Accumulation** - Simulates finger fatigue
-
-### **Architecture:**
-- Multi-threaded design (GUI + listener + clicker loops)
-- pynput for physical input detection with `injected` flag filtering
-- Win32 API for synthetic mouse events
-- Session persistence via JSON
-
----
-
-## Version History
-
-### **v3.7.0** (Current)
-- Left-click hold activation (pynput integration)
-- Ghost Stealth UI rebrand
-- Advanced tuning sliders in GUI
-- Improved race condition handling
-- Session history tracking
-
-### **v3.0-3.6**
-- Statistical engine development
-- Multi-mode support
-- Training system implementation
-- Risk assessment framework
-
----
-
-## Contributing
-
-Interested in playtesting or contributing data?
-
-1. Test on Hypixel/MMC
-2. Record detection times (if any)
-3. Export session data (F6)
-4. Share anonymized results
-
----
-
-## License
-
-Educational use only.
-
----
-
-<div align="center">
-
-**Built with statistical precision for the 1.7.10/1.8.9 PvP community**
-
-[Report Bug](https://github.com/yourusername/mimic/issues) • [Request Feature](https://github.com/yourusername/mimic/issues)
-
-</div>
+This software is for educational and research purposes only. Using automation tools in online games may violate Terms of Service and result in account bans. The authors accept no responsibility for damages resulting from the use of this tool.
