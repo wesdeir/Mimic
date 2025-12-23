@@ -4,7 +4,7 @@ Mimic is an advanced automation framework designed to simulate human clicking pa
 
 This project includes two core components:
 1. **Mimic v4.0**: The primary automation engine with real-time risk assessment and adaptive pattern switching.
-2. **Mimic Benchmark Tool v1.3.0**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
+2. **Mimic Benchmark Tool (v1.3.0)**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
 
 ## Features
 
