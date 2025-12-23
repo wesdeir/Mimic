@@ -49,12 +49,12 @@ python -m pip install keyboard
 1. **Install dependencies:**
 ```cmd
 python -m pip install pywin32 pynput keyboard
-```
+
 
 2. **Run Mimic:**
 ```cmd
 python mimic.py
-```
+
 
 3. **Activate & Click:**
 - Press `F4` to enable
