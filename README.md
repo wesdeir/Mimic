@@ -3,8 +3,8 @@
 Mimic is an advanced automation framework designed to simulate human clicking patterns with high statistical fidelity. Unlike traditional macro software that uses fixed delays or simple randomization, Mimic employs a statistical distribution engine (Gaussian and Weibull) to generate click timings that closely resemble human physiological performance.
 
 This project includes two core components:
-1. **Mimic v3.7**: The primary automation engine with real-time risk assessment and adaptive pattern switching.
-2. **Mimic Benchmark Tool**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
+1. **Mimic v4.0**: The primary automation engine with real-time risk assessment and adaptive pattern switching.
+2. **Mimic Benchmark Tool v1.3.0**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
 
 ## Features
 
