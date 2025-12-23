@@ -35,9 +35,9 @@ This project includes two core components:
 
 Python 3.8+
 ```cmd
-pip install pywin32
-pip install pynput
-pip install keyboard
+python -m pip install pywin32
+python -m pip install pynput
+python -m pip install keyboard
 ```
 
 **Platform:** Windows only (uses Win32 API for mouse events)
