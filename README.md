@@ -1,14 +1,10 @@
-# Mimic v4.0
+# Mimic: Statistical Ghost Clicker & Benchmark Suite
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
-![License](https://img.shields.io/badge/License-Educational-orange.svg)
+Mimic is an advanced automation framework designed to simulate human clicking patterns with high statistical fidelity. Unlike traditional macro software that uses fixed delays or simple randomization, Mimic employs a statistical distribution engine (Gaussian and Weibull) to generate click timings that closely resemble human physiological performance.
 
-> **Statistical Mimicry**
-
-Mimic is a sophisticated auto-clicker designed for Minecraft PvP that uses statistical distributions and adaptive algorithms to replicate human clicking patterns. Built specifically to target anti-cheat systems like MMC's AGC with variance-based detection.
-
----
+This project includes two core components:
+1. **Mimic v3.7**: The primary automation engine with real-time risk assessment and adaptive pattern switching.
+2. **Mimic Benchmark Tool**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
 
 ## Features
 
