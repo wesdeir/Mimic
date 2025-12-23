@@ -1,4 +1,4 @@
-# ⚙️ Mimic v3.7
+# Mimic v4.0
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
