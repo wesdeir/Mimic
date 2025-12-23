@@ -43,6 +43,9 @@ import json
 import win32api
 import win32con
 from pynput import mouse
+import json
+from pathlib import Path
+from MimicBenchmarkTool import ClickTrackerGUI, PYNPUT_AVAILABLE, TKINTER_AVAILABLE
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -52,14 +55,18 @@ class Config:
     """Global configuration with realistic anti-cheat thresholds"""
     
     # Relaxed CPS limits (allow spikes)
-    ABSOLUTE_MIN_DELAY_MS = 65   # 15.4 CPS spike
-    ABSOLUTE_MAX_DELAY_MS = 167  # Extended pauses for  (Old 300, revert if click timing is weird)
+    ABSOLUTE_MIN_DELAY_MS = 30   # 33.3 CPS spike max
+    ABSOLUTE_MAX_DELAY_MS = 250  # Extended pauses for  (Old 300, revert if click timing is weird)
     SUSTAINED_CPS_CAP = 12       # Average shouldn't sustain >12
     
     # Enhanced Mode has wider range
-    ENHANCED_MIN_DELAY_MS = 60   # 16.7 CPS burst maximum
-    ENHANCED_MAX_DELAY_MS = 300  # Longer pauses
+    ENHANCED_MIN_DELAY_MS = 30   # 33.3 CPS spike max
+    ENHANCED_MAX_DELAY_MS = 250  # Longer pauses
     
+    # Gaussian distribution parameters
+    ENHANCED_TARGET_MEAN_MS = 65       # Bell curve center (my click data median)
+    ENHANCED_TARGET_STD_DEV_MS = 42    # Natural variation (my click datas std dev)
+
     # Realistic variance targets
     ENHANCED_IDEAL_VARIANCE = 1500   # Minimum acceptable
     ENHANCED_TARGET_VARIANCE = 2200  # Optimal butterfly/jitter
@@ -78,10 +85,10 @@ class Config:
     TECHNIQUE_TRANSITION_MAX = 15  # Max clicks before switching
     
     # Click mode Parameters
-    BURST_PROBABILITY = 0.20
+    BURST_PROBABILITY = 0.40
     PAUSE_PROBABILITY = 0.02
-    BURST_DURATION = (3, 8)
-    PAUSE_DURATION_MS = (80, 120)
+    BURST_DURATION = (2, 6)
+    PAUSE_DURATION_MS = (150, 200)
     
     # Outlier injection
     OUTLIER_PROBABILITY = 0.02     # 2% of clicks
@@ -262,6 +269,120 @@ class RiskVisualization:
             if score >= level["min"]:
                 return level
         return RiskVisualization.RISK_LEVELS[-1] 
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PRESET SYSTEM
+# ═════════════════════════════════════════════════════════════════════════════
+
+class ClickEnginePresets:
+    """Predefined configurations for different clicking styles"""
+    
+    PRESETS = {
+        "Conservative": {
+            "description": "Original design - slower, safer",
+            "butterfly_mean": 85,
+            "butterfly_std": 35,
+            "jitter_mean": 105,
+            "jitter_std": 22,
+            "normal_mean": 120,
+            "normal_std": 18,
+            "burst_mean": 55,
+            "burst_std": 12,
+            "burst_max_clamp": 110,
+            "variance_target": 1500,
+            "risk_level": "Low"
+        },
+        
+        "Balanced": {
+            "description": "Moderate settings - balance speed & safety",
+            "butterfly_mean": 75,
+            "butterfly_std": 38,
+            "jitter_mean": 90,
+            "jitter_std": 30,
+            "normal_mean": 105,
+            "normal_std": 25,
+            "burst_mean": 45,
+            "burst_std": 8,
+            "burst_max_clamp": 80,
+            "variance_target": 1700,
+            "risk_level": "Medium"
+        },
+        
+        "Aggressive": {
+            "description": "Your actual clicking - optimized for speed",
+            "butterfly_mean": 65,
+            "butterfly_std": 42,
+            "jitter_mean": 75,
+            "jitter_std": 35,
+            "normal_mean": 85,
+            "normal_std": 28,
+            "burst_mean": 35,
+            "burst_std": 4,
+            "burst_max_clamp": 50,
+            "variance_target": 1800,
+            "risk_level": "High"
+        },
+    }
+    
+    @staticmethod
+    def apply_preset(engine, preset_name):
+        """Apply a preset to the engine"""
+        if preset_name not in ClickEnginePresets.PRESETS:
+            return False
+        
+        preset = ClickEnginePresets.PRESETS[preset_name]
+        engine.preset_name = preset_name
+        engine.preset_config = preset
+        return True
+    
+    @staticmethod
+    def get_preset_list():
+        """Return list of available presets"""
+        return list(ClickEnginePresets.PRESETS.keys())
+
+
+class PresetManager:
+    """Persist user-created presets to disk"""
+    
+    PRESETS_FILE = Path.home() / "Desktop" / "mimic_data" / "custom_presets.json"
+    
+    @staticmethod
+    def load_custom_presets():
+        """Load saved presets from file"""
+        try:
+            if PresetManager.PRESETS_FILE.exists():
+                with open(PresetManager.PRESETS_FILE, 'r') as f:
+                    custom = json.load(f)
+                    ClickEnginePresets.PRESETS.update(custom)
+                    print(f"[PRESET] Loaded {len(custom)} custom presets")
+        except Exception as e:
+            print(f"[WARNING] Could not load presets: {e}")
+    
+    @staticmethod
+    def save_preset(name, config):
+        """Save a new preset to file"""
+        try:
+            PresetManager.PRESETS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            
+            custom = {}
+            if PresetManager.PRESETS_FILE.exists():
+                with open(PresetManager.PRESETS_FILE, 'r') as f:
+                    custom = json.load(f)
+            
+            custom[name] = config
+            
+            with open(PresetManager.PRESETS_FILE, 'w') as f:
+                json.dump(custom, f, indent=2)
+            
+            ClickEnginePresets.PRESETS[name] = config
+            print(f"[PRESET] Saved: {name}")
+            return True
+        except Exception as e:
+            print(f"[ERROR] Could not save preset: {e}")
+            return False
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # ADAPTIVE CLICKER ENGINE
 # NOTES: 
@@ -271,11 +392,13 @@ class RiskVisualization:
 # ═════════════════════════════════════════════════════════════════════════════
 
 class AdaptiveClickerEngine:
-    """Mixed mode engine - blends butterfly/jitter/normal techniques"""
+    """Enhanced with preset system for easy tuning"""
     
-    def __init__(self, enhanced_mode=True):
-        """Initialize adaptive engine"""
+    def __init__(self, enhanced_mode=True, preset_name="Aggressive"):
+        """Initialize with preset system"""
         self.enhanced_mode = enhanced_mode
+        self.preset_name = preset_name
+        self.preset_config = ClickEnginePresets.PRESETS.get(preset_name, ClickEnginePresets.PRESETS["Balanced"])
         self.total_clicks = 0
         self.session_start = datetime.now()
         self.combat_start = None
@@ -325,6 +448,13 @@ class AdaptiveClickerEngine:
         # CPS history for graphing
         self.cps_history = deque(maxlen=60)
         self.cps_timestamps = deque(maxlen=60)
+        
+    def set_preset(self, preset_name):
+        """Change preset during runtime"""
+        if ClickEnginePresets.apply_preset(self, preset_name):
+            print(f"[PRESET] Switched to: {preset_name}")
+            return True
+        return False
     
     def start_clicking(self):
         """Session re-randomization for diversity"""
@@ -513,7 +643,18 @@ class AdaptiveClickerEngine:
         return outlier_type
     
     def calculate_delay(self):
-        """Adaptive delay calculation with mixed techniques"""
+        """Calculate delay using current preset"""
+         # Load preset values
+        preset = self.preset_config
+        butterfly_mean = preset["butterfly_mean"]
+        butterfly_std = preset["butterfly_std"]
+        jitter_mean = preset["jitter_mean"]
+        jitter_std = preset["jitter_std"]
+        normal_mean = preset["normal_mean"]
+        normal_std = preset["normal_std"]
+        burst_mean = preset["burst_mean"]
+        burst_std = preset["burst_std"]
+        burst_max = preset["burst_max_clamp"]
         
         # Check for outlier injection
         outlier = self.should_inject_outlier()
@@ -545,9 +686,9 @@ class AdaptiveClickerEngine:
             self.burst_clicks_remaining -= 1
             if self.burst_clicks_remaining <= 0:
                 self.in_burst_mode = False
-            base = abs(self.gaussian_random(55, 12))
+            base = abs(self.gaussian_random(burst_mean, burst_std)) # Changed to use preset values
             base *= random.uniform(0.85, 1.15)
-            final = max(Config.ENHANCED_MIN_DELAY_MS, min(110, base))
+            final = max(Config.ENHANCED_MIN_DELAY_MS, min(burst_max, base)) # Changed to use preset values
             self.click_history.append(final)
             self.all_delays.append(final)
             return final
@@ -558,10 +699,10 @@ class AdaptiveClickerEngine:
         if technique == "butterfly":
             # High variance, burst-prone, wide spread
             if random.random() < 0.7:
-                base = abs(self.gaussian_random(85, 35))
+                base = abs(self.gaussian_random(butterfly_mean, butterfly_std))
             else:
-                base = self.weibull_random(80, 1.8)
-            
+                base = self.weibull_random(butterfly_mean, 1.8)
+                    
             # Butterfly clicks have more variation
             base *= random.uniform(0.70, 1.30)
             
@@ -570,20 +711,18 @@ class AdaptiveClickerEngine:
                 base *= 0.55  # Very fast
         
         elif technique == "jitter":
-            # Medium variance, sustained, consistent
             if random.random() < 0.7:
-                base = abs(self.gaussian_random(105, 22))
+                base = abs(self.gaussian_random(jitter_mean, jitter_std))
             else:
-                base = self.weibull_random(100, 2.0)
+                base = self.weibull_random(jitter_mean, 2.0)
             
             base *= random.uniform(0.82, 1.18)
         
         elif technique == "normal":
-            # Lower variance, rhythmic
             if random.random() < 0.7:
-                base = abs(self.gaussian_random(120, 18))
+                base = abs(self.gaussian_random(normal_mean, normal_std))
             else:
-                base = self.weibull_random(115, 2.5)
+                base = self.weibull_random(normal_mean, 2.5)
             
             base *= random.uniform(0.90, 1.10)
         
@@ -1388,6 +1527,8 @@ class HistogramCanvas:
     
     def pack(self, **kwargs):
         self.canvas.pack(**kwargs)
+        
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN GUI APPLICATION (MIMIC REBRAND 2025-12-19)
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1421,12 +1562,14 @@ class MinecraftAutoClickerGUI:
         self.inactive_tab = "#2d2d2d"
         
         self.root.configure(bg=self.bgcolor)
+        PresetManager.load_custom_presets()
         
         # State
         self.active = False
         self.clicking = False
         self.enhanced_mode = True
         self.engine = None
+        self.current_preset = "Aggressive"
         self.current_page = 0
         self.pages = []
         
@@ -1445,6 +1588,7 @@ class MinecraftAutoClickerGUI:
         self.update_display()
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
     def on_physical_click(self, x, y, button, pressed, injected=False):
         """Listener for PHYSICAL mouse events only"""
         # Ignore synthetic clicks from our autoclicker
@@ -1776,6 +1920,110 @@ class MinecraftAutoClickerGUI:
         mini_btn.pack(side=tk.LEFT, padx=5)
         
         tk.Label(actions_panel, text="", bg=self.panel_color, height=1).pack()
+        
+    def create_preset_panel(self):
+            """Create preset selection panel for settings"""
+            
+            preset_panel = tk.Frame(self.content_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+            preset_panel.pack(fill=tk.X, pady=(0, 8))
+            
+            tk.Label(
+                preset_panel,
+                text="⚙️ Click Profile Presets",
+                font=("Arial", 12, "bold"),
+                bg=self.panel_color,
+                fg=self.fg_color
+            ).pack(pady=(12, 8))
+            
+            # Preset description
+            self.preset_description = tk.Label(
+                preset_panel,
+                text="Select a preset to optimize for your clicking style",
+                font=("Arial", 9),
+                bg=self.panel_color,
+                fg="#888888"
+            )
+            self.preset_description.pack(pady=(0, 10))
+            
+            # Preset buttons
+            button_frame = tk.Frame(preset_panel, bg=self.panel_color)
+            button_frame.pack(pady=10)
+            
+            self.preset_buttons = {}
+            presets = ClickEnginePresets.get_preset_list()
+            
+            for preset_name in presets:
+                btn = tk.Button(
+                    button_frame,
+                    text=preset_name,
+                    font=("Arial", 9, "bold"),
+                    bg=self.button_color,
+                    fg=self.fg_color,
+                    activebackground=self.button_hover,
+                    relief=tk.FLAT,
+                    cursor="hand2",
+                    width=14,
+                    command=lambda p=preset_name: self.apply_preset(p)
+                )
+                btn.pack(side=tk.LEFT, padx=5, pady=5)
+                self.preset_buttons[preset_name] = btn
+            
+            # Preset info display
+            info_frame = tk.Frame(preset_panel, bg=self.panel_color, relief=tk.SUNKEN, bd=1)
+            info_frame.pack(fill=tk.X, padx=15, pady=(0, 12))
+            
+            self.preset_info = tk.Text(
+                info_frame,
+                height=6,
+                width=60,
+                font=("Courier", 8),
+                bg="#1a1a1a",
+                fg="#cccccc",
+                relief=tk.FLAT
+            )
+            self.preset_info.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+            
+            # Set initial preset
+            self.current_preset = "Aggressive"
+            self.update_preset_display()
+
+    def apply_preset(self, preset_name):
+            """Apply preset and update UI"""
+            if self.engine:
+                self.engine.set_preset(preset_name)
+                self.current_preset = preset_name
+                
+                # Highlight active button
+                for btn_name, btn in self.preset_buttons.items():
+                    if btn_name == preset_name:
+                        btn.config(bg="#2196F3", fg="white")
+                    else:
+                        btn.config(bg=self.button_color, fg=self.fg_color)
+                
+                self.update_preset_display()
+
+    def update_preset_display(self):
+            """Update the preset info display"""
+            preset = ClickEnginePresets.PRESETS[self.current_preset]
+            
+            info_text = f"""
+        PRESET: {self.current_preset}
+        {preset['description']}
+
+        Risk Level: {preset['risk_level']}
+        Target Variance: {preset['variance_target']}
+
+        Settings:
+        Butterfly:  {preset['butterfly_mean']}ms ± {preset['butterfly_std']}ms
+        Jitter:     {preset['jitter_mean']}ms ± {preset['jitter_std']}ms
+        Normal:     {preset['normal_mean']}ms ± {preset['normal_std']}ms
+        Burst:      {preset['burst_mean']}ms ± {preset['burst_std']}ms (cap: {preset['burst_max_clamp']}ms)
+        """
+            
+            self.preset_info.config(state="normal")
+            self.preset_info.delete("1.0", tk.END)
+            self.preset_info.insert("1.0", info_text)
+            self.preset_info.config(state="disabled")
     
     def create_stat_card(self, parent, label, value, var_name, col):
         """Create a visual stat card"""
@@ -1867,6 +2115,68 @@ class MinecraftAutoClickerGUI:
             justify=tk.CENTER
         ).pack(pady=(0, 12))
         
+        # ═══ PRESET SYSTEM ═══
+
+        preset_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
+        preset_panel.pack(fill=tk.X, pady=(0, 8), padx=2)
+
+        tk.Label(
+            preset_panel,
+            text="⚙️ Click Profile Presets",
+            font=("Arial", 12, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(12, 8))
+
+        tk.Label(
+            preset_panel,
+            text="Select a preset to optimize for your clicking style",
+            font=("Arial", 9),
+            bg=self.panel_color,
+            fg="#888888"
+        ).pack(pady=(0, 10))
+
+        # Preset buttons
+        button_frame = tk.Frame(preset_panel, bg=self.panel_color)
+        button_frame.pack(pady=10)
+
+        self.preset_buttons = {}
+        presets = ClickEnginePresets.get_preset_list()
+
+        for preset_name in presets:
+            btn = tk.Button(
+                button_frame,
+                text=preset_name,
+                font=("Arial", 9, "bold"),
+                bg=self.button_color,
+                fg=self.fg_color,
+                activebackground=self.button_hover,
+                relief=tk.FLAT,
+                cursor="hand2",
+                width=14,
+                command=lambda p=preset_name: self.apply_preset(p)
+            )
+            btn.pack(side=tk.LEFT, padx=5, pady=5)
+            self.preset_buttons[preset_name] = btn
+
+        # Preset info display
+        info_frame = tk.Frame(preset_panel, bg=self.panel_color, relief=tk.SUNKEN, bd=1)
+        info_frame.pack(fill=tk.X, padx=15, pady=(0, 12))
+
+        self.preset_info = tk.Text(
+            info_frame,
+            height=6,
+            width=60,
+            font=("Courier", 8),
+            bg="#1a1a1a",
+            fg="#cccccc",
+            relief=tk.FLAT
+        )
+        self.preset_info.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        self.update_preset_display()
+
+        tk.Label(preset_panel, text="", bg=self.panel_color, height=1).pack()
         # Export settings
         export_panel = tk.Frame(scrollable_frame, bg=self.panel_color, relief=tk.RIDGE, bd=2)
         export_panel.pack(fill=tk.X, pady=(0, 8), padx=2)
@@ -2257,6 +2567,21 @@ Folder Structure:
             height=2
         )
         self.train_export_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.MimicBenchmarkTool_btn = tk.Button(
+            training_btn_frame,
+            text="🦋 Butterfly CPS Test",
+            font=("Arial", 10, "bold"),
+            bg="#FF6B35",
+            fg="white",
+            activebackground="#E55A2B",
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self.launch_MimicBenchmarkTool,
+            width=18,
+            height=2
+        )
+        self.MimicBenchmarkTool_btn.pack(side=tk.LEFT, padx=5)
         
         self.training_progress = tk.Label(
             controls_panel,
@@ -3031,7 +3356,7 @@ ANALYSIS:
         self.active = not self.active
         
         if self.active:
-            self.engine = AdaptiveClickerEngine(enhanced_mode=self.enhanced_mode)
+            self.engine = AdaptiveClickerEngine(enhanced_mode=self.enhanced_mode, preset_name=self.current_preset)
             self.status_indicator.config(text="🟢 ACTIVE - Hold LEFT CLICK", fg=self.accent_color)
             self.toggle_btn.config(text="⏸ Deactivate (F4)", bg="#f44336")
             print("\n[MIMIC] Activated - Hold LEFT CLICK to click\n")
@@ -3100,6 +3425,76 @@ ANALYSIS:
             self.human_tracker.stop_tracking()
             self.training_status_label.config(text="Inactive - Select a type above", fg="#888888")
             self.train_start_btn.config(text="▶ Start Training (F7)", bg=self.training_color)
+    
+    def launch_MimicBenchmarkTool(self):
+        """
+        Launch the Butterfly Tracker application in a new window.
+        This imports and runs the tracker's GUI module independently.
+        """
+        print("""
+        ═══════════════════════════════════════════════════════════════════════
+        
+                    ███╗   ███╗██╗███╗   ███╗██╗ ██████╗
+                    ████╗ ████║██║████╗ ████║██║██╔════╝
+                    ██╔████╔██║██║██╔████╔██║██║██║     
+                    ██║╚██╔╝██║██║██║╚██╔╝██║██║██║     
+                    ██║ ╚═╝ ██║██║██║ ╚═╝ ██║██║╚██████╗
+                    ╚═╝     ╚═╝╚═╝╚═╝     ╚═╝╚═╝ ╚═════╝      
+                                    
+                        PERFORMANCE OBSERVER SUITE
+                                v1.3.0
+        
+        ═══════════════════════════════════════════════════════════════════════
+        
+            INITIALIZATION PROTOCOL
+        • Loading performance engine...
+        • Activating precision monitors...
+        • Synchronizing analysis modules...
+        
+        ═══════════════════════════════════════════════════════════════════════
+        """)
+        try:
+            
+            # Check dependencies
+            if not PYNPUT_AVAILABLE:
+                messagebox.showerror(
+                    "Missing Dependency",
+                    "pynput is required for Butterfly Tracker\n\n"
+                    "Install with: pip install pynput"
+                )
+                return
+            
+            if not TKINTER_AVAILABLE:
+                messagebox.showerror(
+                    "Missing Dependency",
+                    "tkinter is required for Butterfly Tracker\n\n"
+                    "Please reinstall Python with tkinter support"
+                )
+                return
+            
+            # Create new window for tracker
+            tracker_window = tk.Tk()
+            tracker_window.withdraw()  # Hide briefly while setting up
+            
+            # Launch tracker GUI
+            tracker_app = ClickTrackerGUI(tracker_window)
+            
+            # Show window
+            tracker_window.deiconify()
+            
+            print("[BUTTERFLY TRACKER] Launched in new window")
+            
+        except ImportError as e:
+            messagebox.showerror(
+                "Import Error",
+                f"Could not load Butterfly Tracker:\n\n{str(e)}\n\n"
+                "Make sure MimicBenchmarkTool.py is in the same directory as Mimic.py"
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Launch Error",
+                f"Failed to launch Butterfly Tracker:\n\n{str(e)}"
+            )
     
     def export_stats(self):
         """Export clicker statistics"""
