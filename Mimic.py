@@ -12,19 +12,23 @@ FEATURES:
   Real-time Risk Assessment
   
 File Organization:
-  mimic_data/
-    ├── mimicSessions/   ← Auto-clicker data (F5/F6)
-    ├── butterfly/       ← Human training data
-    ├── jitter/          ← Human training data
-    ├── normal/          ← Human training data
-    └── sessions.json    ← Session history database
+    Desktop/
+        └── Mimic/
+            └── mimic_data/
+                    ├── mimicSessions/   ← Auto-clicker data (F5/F6)
+                    ├── butterfly/       ← Human training data
+                    ├── jitter/          ← Human training data
+                    ├── normal/          ← Human training data
+                    └── sessions.json    ← Session history database
   
 Controls:
-  F4  - Toggle On/Off          F9  - Toggle Enhanced Mode
-  F5  - Export TXT Stats       F10 - Mini Mode
-  F6  - Export CSV             ← → - Navigate Pages
-  F7  - Start/Stop Training    Enter - Quick Toggle (Disabled)
-  F8  - Export Training Data   MB1 - Click (Hold)
+  MB1 - Click (Hold)
+  ← → - Navigate Pages
+  F4  - Toggle On/Off          
+  F6  - Export CSV 
+  F7  - Start/Stop Training    
+  F8  - Export Training Data
+  F9  - Toggle Enhanced Mode
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -46,6 +50,9 @@ from pynput import mouse
 import json
 from pathlib import Path
 from MimicBenchmarkTool import ClickTrackerGUI, PYNPUT_AVAILABLE, TKINTER_AVAILABLE
+
+#TODO: Make "balanced" preset the default preset (F4 doesnt require a seletion)
+#TODO: When making the installer, implement an automatic file structure setup in a user specified target destination.
 
 # ═════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
