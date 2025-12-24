@@ -1,20 +1,21 @@
 """
 
-MIMIC Clicking Benchmark - CPS Test Tool
+MIMIC Clicking Benchmark
 
-Tracks individual clicks, calculates CPS, and exports detailed analytics to CSV + TXT
+- Tracks individual clicks, calculates CPS, and exports detailed analytics to CSV + TXT
 
-GUI-only interface, integrated with MIMIC
+- Integrated with MIMIC
 
-Tracks ALL clicks including double-clicks
+- Timer starts on first click
 
-Timer starts on first click
+- Features fatigue analysis, click intervals, and burst detection
 
-Enhanced with fatigue analysis, click intervals, and burst detection
+- Auto-generates filenames and summary stats files
 
-Auto-generates readable filenames and summary stats files
+- Auto-saves to Desktop/Mimic/click_data/ folder with proper permission handling
 
-Auto-saves to Desktop/click_data/ folder with proper permission handling
+- Used for fine tuning your click preset settings in the Mimic GUI.
+    * Run Benchmark tool, preform anaysis on data, Mimic your real data within the GUI.
 
 """
 
