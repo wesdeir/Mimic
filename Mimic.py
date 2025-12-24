@@ -1872,14 +1872,14 @@ class MinecraftAutoClickerGUI:
         
         export_btn = tk.Button(
             btn_row1,
-            text="📊 Export Stats (F5)",
+            text="📊 Export Stats",
             font=("Arial", 9),
             bg=self.button_color,
             fg=self.fg_color,
             activebackground=self.button_hover,
             relief=tk.FLAT,
             cursor="hand2",
-            command=self.export_stats,
+            #command=self.export_stats, DISABLED FOR TESTING
             width=18,
             height=2
         )
@@ -3187,7 +3187,7 @@ ANALYSIS:
         """Register all keyboard hotkeys"""
         keyboard.add_hotkey('f4', self.toggle_active)
         #keyboard.add_hotkey('enter', self.toggle_active) #DISABLED
-        keyboard.add_hotkey('f5', self.export_stats)
+        #keyboard.add_hotkey('f5', self.export_stats) #DISABLED
         keyboard.add_hotkey('f6', self.export_csv)
         keyboard.add_hotkey('f7', self.toggle_training_mode)
         keyboard.add_hotkey('f8', self.export_human_baseline)
