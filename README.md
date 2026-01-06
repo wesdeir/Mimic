@@ -9,10 +9,10 @@ This project includes two core components:
 ## Features
 
 ### **Core Functionality**
-- **Hold-to-Click Activation** - Natural left-click hold interface using pynput [web:112]
+- **Hold-to-Click Activation** - Natural left-click hold interface using pynput
 - **Adaptive Mixed Mode** - Dynamically blends butterfly/jitter/normal clicking techniques
 - **Statistical Engine** - Gaussian (Box-Muller) + Weibull distributions for realistic delays
-- **Variance Targeting** - Configurable 1,500-2,500 variance range (optimal for AGC bypass)
+- **Variance Targeting** - Configurable 1,500-3,000 variance range (optimal for AGC bypass)
 - **Real-Time Risk Assessment** - Live detection risk scoring (0-100)
 
 ### **Anti-Detection Systems**
@@ -47,16 +47,14 @@ pip install keyboard
 ## Quick Start
 
 1. **Install dependencies:**
-
+```cmd
 python -m pip install pywin32 pynput keyboard
-
-text
+```
 
 2. **Run Mimic:**
-
+```cmd
 python mimic.py
-
-text
+```
 
 3. **Activate & Click:**
 - Press `F4` to enable
@@ -99,51 +97,9 @@ text
 
 ### **Enhanced Mode (Recommended)**
 - **CPS Range:** 7-12 average, 15-16 spikes allowed
-- **Target Variance:** 2,200 (optimal for AGC)
+- **Target Variance:** 2,200+ (optimal for AGC)
 - **Acceptable Range:** 1,500-3,500
 - **Detection Risk:** LOW (score 80+)
-
-### **Standard Mode**
-- **CPS Range:** 5-9 average, 11-13 spikes
-- **Target Variance:** 900
-- **Acceptable Range:** 600-1,500
-- **Detection Risk:** LOW (score 70+)
-
----
-
-## Testing Strategy
-
-Based on anti-cheat research for 1.8.9 PvP servers [web:75][web:84]:
-
-### **Phase 1: Hypixel (Week 1)**
-- Server: `mc.hypixel.net`
-- Anti-Cheat: Watchdog
-- Goal: 30+ minute sessions undetected
-- Game Modes: Duels → BedWars/SkyWars
-
-### **Phase 2: Extended Testing (Week 2)**
-- Increase to 1-2 hour sessions
-- Monitor variance/CPS when flagged (if any)
-- Adjust settings based on results
-
-### **Phase 3: MMC Final Test (Week 3+)**
-- Server: `na.minemen.club` / `eu.minemen.club`
-- Anti-Cheat: AGC (AntiGamingChair) - Most strict
-- Goal: 30+ minutes undetected = success
-- **Use alt accounts for testing**
-
----
-
-## Advanced Tuning
-
-Accessible in **Settings → Advanced Tuning**:
-
-- **Pause Probability:** 0-20% (default: 10%)
-- **Pause Duration:** 50-500ms (default: 200-450ms)
-- **Burst Probability:** 0-50% (default: 20%)
-- **Target Variance:** 800-3500 (default: 2200)
-
-Fine-tune these during gameplay to balance hit registration vs detection risk.
 
 ---
 
