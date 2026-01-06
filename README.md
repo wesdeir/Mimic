@@ -1,4 +1,4 @@
-# Mimic: Ghost Clicker & Benchmark Suite
+# Mimic: Undetectable AutoClicker & Click Benchmark Suite
 
 Mimic is an advanced automation framework designed to simulate human clicking patterns with high statistical fidelity. Unlike traditional macro software that uses fixed delays or simple randomization, Mimic employs a statistical distribution engine (Gaussian and Weibull) to generate click timings that closely resemble human physiological performance.
 
