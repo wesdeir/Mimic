@@ -11,16 +11,6 @@ FEATURES:
   2% Outlier Injection
   Real-time Risk Assessment
   
-File Organization:
-    Desktop/
-        └── Mimic/
-            └── mimic_data/
-                    ├── mimicSessions/   ← Auto-clicker data (F5/F6)
-                    ├── butterfly/       ← Human training data
-                    ├── jitter/          ← Human training data
-                    ├── normal/          ← Human training data
-                    └── sessions.json    ← Session history database
-  
 Controls:
   MB1 - Click (Hold)
   ← → - Navigate Pages
@@ -241,7 +231,7 @@ class RiskAssessor:
         else:
             risk = "HIGH"
             color = "#f44336"
-            status = "🚨 DANGEROUS - Easily detectable"
+            status = "🚨 DANGEROUS - Click Normally for 10 or more minutes"
         
         return {
             "risk": risk,
@@ -287,7 +277,7 @@ class ClickEnginePresets:
     
     PRESETS = {
         "Conservative": {
-            "description": "Original design - slower, safer",
+            "description": "Original design - slower, safer, but more likely to not trigger",
             "butterfly_mean": 85,
             "butterfly_std": 35,
             "jitter_mean": 105,
@@ -302,7 +292,7 @@ class ClickEnginePresets:
         },
         
         "Balanced": {
-            "description": "Moderate settings - balance speed & safety",
+            "description": "(Recommended) - balance speed & safety",
             "butterfly_mean": 75,
             "butterfly_std": 38,
             "jitter_mean": 90,
@@ -317,7 +307,7 @@ class ClickEnginePresets:
         },
         
         "Aggressive": {
-            "description": "Your actual clicking - optimized for speed",
+            "description": "Optimized for speed",
             "butterfly_mean": 65,
             "butterfly_std": 42,
             "jitter_mean": 75,
@@ -3669,4 +3659,5 @@ if __name__ == "__main__":
     """)
     
     app = MinecraftAutoClickerGUI()
+
     app.run()
