@@ -95,11 +95,12 @@ python mimic.py
 
 ## Target Metrics
 
-### **Enhanced Mode (Recommended)**
+### **Current metrics using the most up to date clicking engine**
 - **CPS Range:** 7-12 average, 15-16 spikes allowed
 - **Target Variance:** 2,200+ (optimal for AGC)
 - **Acceptable Range:** 1,500-3,500
-- **Detection Risk:** LOW (score 80+)
+- **Detection Risk:** LOW (score 80+ || <= 1500 variance)
+Note: "score" is a way that the program tracks instances where an anti cheat might begin to recognize patterns. Once this score reaches a certain weighted threshold, the clicking technique changes (outlier injection, click delays etc. resulting in lower avg. CPS) to obfuscate the measured clicks during the current session.
 
 ---
 
