@@ -68,15 +68,12 @@ python mimic.py
 | Key | Action |
 |-----|--------|
 | `F4` | Toggle On/Off |
-| `LEFT CLICK` | Auto-Click (Hold) |
-| `F5` | Export TXT Stats |
+| `LEFT CLICK` | Attack (Hold) |
 | `F6` | Export CSV Data |
 | `F7` | Start/Stop Training |
 | `F8` | Export Training Data |
 | `F9` | Toggle Enhanced Mode |
-| `F10` | Mini Mode (Coming Soon) |
 | `← →` | Navigate Pages |
-| `Enter` | Quick Toggle |
 
 ---
 
@@ -100,7 +97,8 @@ python mimic.py
 - **Target Variance:** 2,200+ (optimal for AGC)
 - **Acceptable Range:** 1,500-3,500
 - **Detection Risk:** LOW (score 80+ || <= 1500 variance)
-Note: "score" is a way that the program tracks instances where an anti cheat might begin to recognize patterns. Once this score reaches a certain weighted threshold, the clicking technique changes (outlier injection, click delays etc. resulting in lower avg. CPS) to obfuscate the measured clicks during the current session.
+Note: "score" is a way that the program tracks instances where an anti cheat might begin to recognize patterns. Once this score reaches a certain weighted threshold, the aforementioned Anti-Detection Systems engage to bring the detection risk back to optimal state. 
+Note: The longer a session runs, the more likely you will see a higher detection risk.
 
 ---
 
