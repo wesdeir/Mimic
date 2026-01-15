@@ -2,6 +2,8 @@
 
 ## Immediate TODOs (v3.6)
 
+and Jesus fucking christ break up the code into smaller more manageable chunks.
+
 ### 1. **Create an install wizard. Getting friends to test it out is proving to be a hassle without an installer - difficult for non-techincal users to setup currently. **
 
 ### 2. **Auto-Tuning Wizard**
@@ -130,6 +132,7 @@ v4.0 (Future):
 - Competitive gaming click patterns
 - Speedrunner clicking data
 - Pro player APM (actions per minute) analysis
+
 
 
 
