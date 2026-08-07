@@ -63,18 +63,36 @@ class Config:
     # Values measured from the operator's own recordings in click_data/:
     # doubles land 34.4ms +/- 1.6ms after the real press. The rate is drawn
     # fresh per session rather than fixed, because the real thing is not fixed:
-    # measured sessions ran 0.26, 0.43, 0.47 and 0.79 doubles per press.
-    # The draw range sits slightly above that because DOUBLE_MIN_REMAINDER_MS
-    # rejects ~16% of attempts; post-rejection the realised rate lands on the
-    # measured 0.49.
-    # A constant rate would make Mimic more self-consistent than the hardware
-    # it is imitating, and consistency is what anti-cheats actually flag.
+    # measured sessions ran 0.20, 0.21, 0.26, 0.43, 0.47 and 0.79 per press;
+    # the two 60s butterfly runs sit at the bottom of that spread.
+    # The range is drawn per session; DOUBLE_MIN_REMAINDER_MS then rejects a
+    # further ~16% of attempts. A constant rate would make Mimic more
+    # self-consistent than the hardware it imitates, and consistency is what
+    # anti-cheats actually flag.
     DOUBLE_CLICK_EMULATION = True
-    DOUBLE_RATE_MIN = 0.30
-    DOUBLE_RATE_MAX = 0.88
+    DOUBLE_RATE_MIN = 0.20
+    DOUBLE_RATE_MAX = 0.55
     DOUBLE_GAP_MS = 34.4        # pooled mean across all doubling sessions
     DOUBLE_GAP_STD_MS = 1.6     # pooled spread (per-session: 0.46 - 3.43ms)
-    DOUBLE_HOLD_MS = 8.0
+    DOUBLE_HOLD_MS = 17.0       # measured: the bounce press holds ~17ms too
+
+    # Button hold time, measured from 1052 samples across two 60s butterfly
+    # recordings. The old model was random.gauss(26, 8) -- a guess that was
+    # 40% low on the mean and 3.3x too tight on the spread.
+    #
+    # Real holds are bimodal, and the two modes have different causes:
+    #   presses that get doubled : 17.27ms +/- 1.50  (the switch, not the hand)
+    #   every other press        : 46.14ms +/- 26.73 (lognormal, median 46)
+    # Modelling that split reproduces most of the observed +0.425 correlation
+    # between hold and the following interval, because a 17ms hold is always
+    # followed by a ~34ms bounce. A genuine human coupling of +0.269 survives
+    # once the doubles are excluded, so HOLD_DELAY_RHO adds that on top.
+    HOLD_MEDIAN_MS = 46.0
+    HOLD_SIGMA = 0.625
+    HOLD_MIN_MS = 15.0
+    HOLD_DELAY_RHO = 0.35       # tuned so realised corr lands near +0.27
+    DOUBLE_PRESS_HOLD_MS = 17.0
+    DOUBLE_PRESS_HOLD_STD_MS = 1.5
     # A double must leave a plausible interval behind it. Measured remainders
     # after a real double run a median of 122ms with only 6.7% under 50ms, so
     # doubles land on the longer presses. Without this floor the engine doubled

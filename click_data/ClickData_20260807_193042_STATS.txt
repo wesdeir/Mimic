@@ -1,0 +1,121 @@
+
+═══════════════════════════════════════════════════════════════════════
+DATA QUALITY  --  read this before using the session
+═══════════════════════════════════════════════════════════════════════
+
+Verdict: [?] DOUBLE-CLICK MOUSE
+Technique: butterfly
+
+  ! 16.9% of events are hardware doubles (35.229ms +/- 3.735ms) -- expected on a double-clicking mouse, and they count as real hits in game. Effective CPS 9.06, hand-only CPS 7.55. Motor stats below use hand-only; the doubles are the switch, not you.
+
+DOUBLE-CLICK MOUSE DETECTED  (this is normal kit for MC PvP)
+  Hardware doubles: 92 (16.9% of all clicks)
+  Double interval : 35.229 ms +/- 3.735 ms
+  EFFECTIVE CPS   : 9.06   <-- what the game and anti-cheat see
+  HAND-ONLY CPS   : 7.55   <-- what your fingers actually do
+
+  Both figures are real and both matter. Effective CPS is your
+  combat output and the number an anti-cheat thresholds on.
+  Hand-only CPS is what a human motor model must be fitted to,
+  since the switch bounce repeats to under 1ms and no hand can.
+  The motor statistics below deliberately exclude the doubles.
+
+USB POLLING RATE: ~1000 Hz (confidence 1.0)
+  Rayleigh scores: {125: 1.1, 250: 0.6, 500: 3.2, 1000: 202.6}
+  -> set Config.POLL_RATE_HZ = 1000 in the clicker.
+
+BUTTON HOLD TIME
+  mean 39.751 ms +/- 25.529 ms   median 35.049 ms
+  range 15.892 - 142.193 ms   (n=544)
+  correlation with next interval: +0.432
+
+FIT DIAGNOSTICS  (what an anti-cheat can compute for free)
+  autocorrelation  lag1 -0.111  lag2 +0.134  lag3 -0.117
+  runs-test z      +6.31   (0 = human-like; large |z| = streaky)
+  skew +5.696   kurtosis +47.063   mean/median 1.123
+  coeff. variation 0.594
+  clean intervals  452   corrected mean 132.501 ms +/- 78.738 ms
+
+╔════════════════════════════════════════════════════════════════════╗
+║ MIMIC CLICKING BENCHMARK ║
+║ SESSION ANALYSIS REPORT ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Generated: 2026-08-07 19:30:42
+
+═══════════════════════════════════════════════════════════════════════
+SESSION OVERVIEW
+═══════════════════════════════════════════════════════════════════════
+
+Total Clicks: 544
+├─ Single-clicks: 452 (83.1%)
+└─ Double-clicks: 92 (16.9%)
+
+Duration: 60.012s
+CPS (Average): 9.06 clicks/sec
+
+═══════════════════════════════════════════════════════════════════════
+CLICK TIMING ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+Min Delay: 33.6 ms
+Max Delay: 957.796 ms
+Avg Delay: 110.295 ms
+Std Deviation: 78.59 ms
+Consistency Rating: Inconsistent
+
+═══════════════════════════════════════════════════════════════════════
+PERCENTILE ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+P10 (Bottom 10%): 34.031 ms
+P25 (Lower Quarter): 69.816 ms
+P50 (MEDIAN): 96.601 ms ★ Your comfort zone
+P75 (Upper Quarter): 147.001 ms
+P90 (Top 10%): 172.067 ms
+
+═══════════════════════════════════════════════════════════════════════
+CLICK INTERVAL DISTRIBUTION
+═══════════════════════════════════════════════════════════════════════
+
+0-30ms:    0 clicks (  0.0%)
+30-50ms:   92 clicks ( 16.9%) ← Primary zone
+50-100ms:  193 clicks ( 35.5%)
+100-150ms:  135 clicks ( 24.9%)
+150-200ms:  101 clicks ( 18.6%)
+200-300ms:   17 clicks (  3.1%)
+300ms+:    5 clicks (  0.9%)
+
+═══════════════════════════════════════════════════════════════════════
+BURST ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+Total Bursts Detected: 8
+Avg Burst Length: 2 clicks
+Longest Burst: 2 consecutive clicks
+
+═══════════════════════════════════════════════════════════════════════
+FATIGUE ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+0s-6s        │ 14.33 CPS │  86 clicks
+6s-12s       │ 11.83 CPS │  71 clicks
+12s-18s      │   9.0 CPS │  54 clicks
+18s-24s      │  8.83 CPS │  53 clicks
+24s-30s      │  8.17 CPS │  49 clicks
+30s-36s      │  7.67 CPS │  46 clicks
+36s-42s      │  9.33 CPS │  56 clicks
+42s-48s      │  7.17 CPS │  43 clicks
+48s-54s      │   7.0 CPS │  42 clicks
+54s-60s      │  7.33 CPS │  44 clicks
+
+═══════════════════════════════════════════════════════════════════════
+FILES GENERATED
+═══════════════════════════════════════════════════════════════════════
+
+Location: Desktop/click_data/
+
+• ClickData_YYYYMMDD_HHMMSS.csv (detailed click-by-click data)
+• ClickData_YYYYMMDD_HHMMSS_STATS.txt (this analysis)
+
+═══════════════════════════════════════════════════════════════════════

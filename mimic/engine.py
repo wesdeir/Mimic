@@ -473,11 +473,18 @@ class AdaptiveClickerEngine:
         # MimicBenchmarkTool records training data (on `pressed` only).
         delay_ms = self.calculate_delay()
 
-        # Isolate pressure times to separate sub-millisecond structures
-        pressure_ms = abs(random.gauss(26, 8))
-        if pressure_ms < 15:
-            pressure_ms = 15
-        pressure_ms = min(pressure_ms, delay_ms * 0.6)
+        # Decide the double BEFORE the hold, because the two are not
+        # independent: a press that the switch doubles holds ~17ms, while a
+        # press that does not holds ~46ms. That structure is most of the
+        # measured +0.425 correlation between hold and the next interval.
+        gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
+        will_double = (
+            Config.DOUBLE_CLICK_EMULATION
+            and self._uniforms.next() < self.double_rate
+            and delay_ms - (gap + Config.DOUBLE_HOLD_MS) >= Config.DOUBLE_MIN_REMAINDER_MS
+        )
+
+        pressure_ms = self._draw_hold(delay_ms, will_double)
 
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         self.precise_sleep(pressure_ms / 1000.0)
@@ -497,23 +504,54 @@ class AdaptiveClickerEngine:
         # a hit. Reproducing it keeps the synthetic click stream consistent
         # with what this account's hardware has always produced.
         consumed = pressure_ms
-        if Config.DOUBLE_CLICK_EMULATION and self._uniforms.next() < self.double_rate:
-            gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
-            need = gap + Config.DOUBLE_HOLD_MS
-            # Only if the double fits inside the interval with room to spare.
-            if gap > pressure_ms and delay_ms - need >= Config.DOUBLE_MIN_REMAINDER_MS:
-                self.precise_sleep((gap - pressure_ms) / 1000.0)
-                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-                self.precise_sleep(Config.DOUBLE_HOLD_MS / 1000.0)
-                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-                consumed = need
-                self.total_clicks += 1
-                self.double_count += 1
+        if will_double and gap > pressure_ms:
+            # The bounce press holds for a normal human duration, not a short
+            # one: the switch released early on the first actuation, so the
+            # second carries the remainder of the finger press. Measured holds
+            # that are NOT immediately before a double average 46ms with a
+            # median of 47 -- bounce presses sit in that group, not in the
+            # 17ms one.
+            budget = delay_ms - gap - Config.DOUBLE_MIN_REMAINDER_MS
+            bounce_hold = min(self._draw_hold(delay_ms, False), max(1.0, budget))
+
+            self.precise_sleep((gap - pressure_ms) / 1000.0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            self.precise_sleep(bounce_hold / 1000.0)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            consumed = gap + bounce_hold
+            self.total_clicks += 1
+            self.double_count += 1
 
         # The hold is PART of the interval, not additional to it. Sleeping the
         # full delay here on top of pressure_ms was inflating every period by
         # ~26ms, which is why in-game CPS mods always read lower than Mimic did.
         self.precise_sleep(max(0.0, delay_ms - consumed) / 1000.0)
+
+    def _draw_hold(self, delay_ms: float, will_double: bool) -> float:
+        """Button hold duration for one press, in ms.
+
+        Two regimes, measured from 1052 real holds:
+          * a press the switch will double holds 17.27ms +/- 1.50 -- that is
+            the switch bouncing, so it is tight and hand-independent;
+          * any other press holds 46.14ms +/- 26.73, right-skewed, drawn
+            log-normally and coupled to the interval that follows it.
+
+        The coupling is real: correlation between hold and the next interval
+        is +0.425 overall, and still +0.269 with every double excluded.
+        """
+        if will_double:
+            return max(1.0, random.gauss(Config.DOUBLE_PRESS_HOLD_MS,
+                                         Config.DOUBLE_PRESS_HOLD_STD_MS))
+
+        # self._u is the AR(1) noise that drove this interval, so blending it
+        # into the hold's own noise produces the observed positive coupling
+        # without needing to model the joint distribution explicitly.
+        rho = Config.HOLD_DELAY_RHO
+        z = rho * self._u + math.sqrt(max(0.0, 1.0 - rho * rho)) * self._normals.next()
+
+        hold = Config.HOLD_MEDIAN_MS * math.exp(Config.HOLD_SIGMA * z)
+        hold = max(Config.HOLD_MIN_MS, hold)
+        return min(hold, delay_ms * 0.6)
 
     def get_current_cps(self) -> float:
         """Short-window CPS from the modelled press-to-press period."""
