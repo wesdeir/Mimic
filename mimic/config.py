@@ -70,8 +70,10 @@ class Config:
     # self-consistent than the hardware it imitates, and consistency is what
     # anti-cheats actually flag.
     DOUBLE_CLICK_EMULATION = True
-    DOUBLE_RATE_MIN = 0.20
-    DOUBLE_RATE_MAX = 0.55
+    # Multiplies each technique's own rate (StateParams.double_rate), so a
+    # technique measured at zero doubles stays at zero.
+    DOUBLE_SESSION_MIN = 0.70
+    DOUBLE_SESSION_MAX = 1.80
     DOUBLE_GAP_MS = 34.4        # pooled mean across all doubling sessions
     DOUBLE_GAP_STD_MS = 1.6     # pooled spread (per-session: 0.46 - 3.43ms)
     DOUBLE_HOLD_MS = 17.0       # measured: the bounce press holds ~17ms too
@@ -287,7 +289,10 @@ class RiskVisualization:
 class ClickEnginePresets:
     """Predefined configurations for different clicking styles"""
     
-    # Anchored to the operator's own chatter-free recordings in click_data/
+    # Anchored to the operator's own 60s recordings, one pair per technique.
+    # butterfly measured 137.2ms +/- 70.4, normal 187.0ms +/- 50.2; jitter is
+    # interpolated between them and has no data behind it.
+    # Previously anchored to
     # (mean 110.8ms, std 42.4ms, median 94ms, ~9.0 CPS). The previous values
     # targeted 65-85ms / ~13 CPS, which no session in the training data ever
     # reached once switch chatter was discounted -- they were faster than the
@@ -298,12 +303,12 @@ class ClickEnginePresets:
     PRESETS = {
         "Conservative": {
             "description": "Slower than your baseline - safest, lowest variance flags",
-            "butterfly_mean": 131,
-            "butterfly_std": 46,
-            "jitter_mean": 147,
-            "jitter_std": 53,
-            "normal_mean": 162,
-            "normal_std": 60,
+            "butterfly_mean": 151,
+            "butterfly_std": 77,
+            "jitter_mean": 176,
+            "jitter_std": 64,
+            "normal_mean": 206,
+            "normal_std": 55,
             "burst_mean": 92,
             "burst_std": 26,
             "burst_max_clamp": 70,
@@ -313,12 +318,12 @@ class ClickEnginePresets:
 
         "Balanced": {
             "description": "(Recommended) - matches your measured human baseline",
-            "butterfly_mean": 117,
-            "butterfly_std": 44,
-            "jitter_mean": 131,
-            "jitter_std": 51,
-            "normal_mean": 146,
-            "normal_std": 57,
+            "butterfly_mean": 137,
+            "butterfly_std": 70,
+            "jitter_mean": 160,
+            "jitter_std": 58,
+            "normal_mean": 187,
+            "normal_std": 50,
             "burst_mean": 82,
             "burst_std": 24,
             "burst_max_clamp": 60,
@@ -328,12 +333,12 @@ class ClickEnginePresets:
 
         "Aggressive": {
             "description": "Faster than your baseline - stays under the CPS cap",
-            "butterfly_mean": 99,
-            "butterfly_std": 39,
-            "jitter_mean": 111,
-            "jitter_std": 46,
-            "normal_mean": 123,
-            "normal_std": 51,
+            "butterfly_mean": 121,
+            "butterfly_std": 62,
+            "jitter_mean": 141,
+            "jitter_std": 51,
+            "normal_mean": 165,
+            "normal_std": 44,
             "burst_mean": 70,
             "burst_std": 20,
             "burst_max_clamp": 52,
