@@ -394,12 +394,19 @@ class ClickSession:
 
         verdict, reasons = "USABLE", []
         if chatter['chatter_detected']:
-            verdict = "CONTAMINATED"
+            # NOT a fault. A double-clicking mouse is standard kit in Minecraft
+            # PvP -- each physical press registers twice, which is the point.
+            # The game counts both, so both are real hits. They are excluded
+            # here only because they are the SWITCH's timing, not the hand's,
+            # and the motor model has to be fitted to the hand.
+            verdict = "DOUBLE-CLICK MOUSE"
             reasons.append(
-                f"{chatter['chatter_pct']}% of events are switch chatter "
-                f"({chatter['chatter_mean_ms']}ms +/- {chatter['chatter_std_ms']}ms). "
-                f"Reported CPS {round(self.get_cps(), 2)} is really {round(true_cps, 2)}. "
-                f"Re-record on a different mouse before fitting anything to this."
+                f"{chatter['chatter_pct']}% of events are hardware doubles "
+                f"({chatter['chatter_mean_ms']}ms +/- {chatter['chatter_std_ms']}ms) -- "
+                f"expected on a double-clicking mouse, and they count as real "
+                f"hits in game. Effective CPS {round(self.get_cps(), 2)}, "
+                f"hand-only CPS {round(true_cps, 2)}. Motor stats below use "
+                f"hand-only; the doubles are the switch, not you."
             )
         if len(corrected) < 200:
             if verdict == "USABLE":
@@ -462,17 +469,21 @@ class ClickSession:
 
         if stats.get('chatter_detected'):
             lines += [
-                "SWITCH CHATTER DETECTED",
-                f"  Phantom events : {stats['chatter_count']} ({stats['chatter_pct']}% of all clicks)",
-                f"  Bounce interval: {stats['chatter_mean_ms']} ms +/- {stats['chatter_std_ms']} ms",
-                f"  Reported CPS   : {stats.get('cps')}   <-- inflated, do not use",
-                f"  TRUE CPS       : {stats.get('true_cps')}",
-                "  Human timing never repeats to under ~1ms. This is the mouse,",
-                "  not you. Replace it or use a different one for training data.",
+                "DOUBLE-CLICK MOUSE DETECTED  (this is normal kit for MC PvP)",
+                f"  Hardware doubles: {stats['chatter_count']} ({stats['chatter_pct']}% of all clicks)",
+                f"  Double interval : {stats['chatter_mean_ms']} ms +/- {stats['chatter_std_ms']} ms",
+                f"  EFFECTIVE CPS   : {stats.get('cps')}   <-- what the game and anti-cheat see",
+                f"  HAND-ONLY CPS   : {stats.get('true_cps')}   <-- what your fingers actually do",
+                "",
+                "  Both figures are real and both matter. Effective CPS is your",
+                "  combat output and the number an anti-cheat thresholds on.",
+                "  Hand-only CPS is what a human motor model must be fitted to,",
+                "  since the switch bounce repeats to under 1ms and no hand can.",
+                "  The motor statistics below deliberately exclude the doubles.",
                 "",
             ]
         else:
-            lines += [f"No switch chatter detected. TRUE CPS: {stats.get('true_cps')}", ""]
+            lines += [f"No hardware doubling in this session. CPS: {stats.get('true_cps')}", ""]
 
         rate = stats.get('poll_rate_hz')
         if rate:
@@ -1062,8 +1073,8 @@ class ClickTrackerGUI:
         _warnings = "".join(f"\n  ! {r}\n" for r in stats.get('verdict_reasons', []))
         _truecps = ""
         if stats.get('chatter_detected'):
-            _truecps = (f"\nTRUE CPS (chatter removed): {stats.get('true_cps')}"
-                        f"   <-- use this, not the figure above\n")
+            _truecps = (f"\nHAND-ONLY CPS (hardware doubles excluded): {stats.get('true_cps')}"
+                        f"\n  ^ fit motor models to this; the CPS above is combat output\n")
 
         results_str = f"""
 ═════════════════════════════════════════════════

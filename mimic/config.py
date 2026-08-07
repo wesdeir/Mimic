@@ -50,6 +50,24 @@ class Config:
     # amplitude as a fraction of the base interval.
     DRIFT_REVERSION = 0.985
     DRIFT_SIGMA = 0.055
+
+    # Double-click (switch bounce) emulation.
+    # A double-clicking mouse is standard kit in Minecraft PvP: each physical
+    # press registers twice, so effective CPS is roughly 1 + DOUBLE_RATE times
+    # the hand rate. Mimic drives the OS click API directly, which bypasses the
+    # switch entirely -- so with this off, synthetic clicks carry NO doubles,
+    # while the same account's manual play is 20-44% doubles. Turning it on
+    # keeps the click stream consistent with the hardware the account has
+    # always used, and raises combat output without raising the hand rate.
+    #
+    # Values measured from the operator's own recordings in click_data/:
+    # doubles land 34.0ms +/- 0.68ms after the real press, on 20.7-42.9% of
+    # presses depending on session.
+    DOUBLE_CLICK_EMULATION = False
+    DOUBLE_RATE = 0.30
+    DOUBLE_GAP_MS = 34.0
+    DOUBLE_GAP_STD_MS = 0.68
+    DOUBLE_HOLD_MS = 8.0
     
     # Adaptive mode parameters
     TECHNIQUE_TRANSITION_MIN = 5   # Min clicks before switching
