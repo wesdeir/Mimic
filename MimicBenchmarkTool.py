@@ -1,23 +1,4 @@
-"""
 
-MIMIC Clicking Benchmark
-
-- Tracks individual clicks, calculates CPS, and exports detailed analytics to CSV + TXT
-
-- Integrated with MIMIC
-
-- Timer starts on first click
-
-- Features fatigue analysis, click intervals, and burst detection
-
-- Auto-generates filenames and summary stats files
-
-- Auto-saves to Desktop/Mimic/click_data/ folder with proper permission handling
-
-- Used for fine tuning your click preset settings in the Mimic GUI.
-    * Run Benchmark tool, preform anaysis on data, Mimic your real data within the GUI.
-
-"""
 
 import csv
 import time
@@ -49,13 +30,15 @@ class ClickEvent:
     timestamp: float
     delay_ms: float = 0.0
     button: str = "LEFT"
+    hold_ms: float = 0.0    # press-to-release duration, filled in on release
 
     def to_dict(self):
         return {
             'click_number': self.click_number,
             'timestamp': self.timestamp,
             'delay_ms': round(self.delay_ms, 3),
-            'button': self.button
+            'button': self.button,
+            'hold_ms': round(self.hold_ms, 3)
         }
 
 @dataclass
@@ -85,6 +68,18 @@ class ClickSession:
         )
         self.clicks.append(click_event)
         return True
+
+    def close_click(self):
+        """Stamp the hold duration onto the most recent click, on release.
+
+        Button hold time is a first-class anti-cheat signal and was previously
+        never captured -- the listener ignored release events entirely, so the
+        clicker's hold model had no measured data behind it at all.
+        """
+        if self.clicks and self.clicks[-1].hold_ms == 0.0:
+            self.clicks[-1].hold_ms = (time.time() - self.clicks[-1].timestamp) * 1000
+            return True
+        return False
 
     def get_cps(self) -> float:
         """Calculate clicks per second"""
@@ -368,7 +363,7 @@ Location: Desktop/click_data/
 
             filename = csv_filename
 
-        fieldnames = ['click_number', 'timestamp', 'relative_time_ms', 'delay_ms', 'button', 'click_type']
+        fieldnames = ['click_number', 'timestamp', 'relative_time_ms', 'delay_ms', 'hold_ms', 'button', 'click_type']
 
         try:
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
@@ -384,6 +379,7 @@ Location: Desktop/click_data/
                         'timestamp': round(click.timestamp, 6),
                         'relative_time_ms': round((click.timestamp - session_start) * 1000, 3),
                         'delay_ms': round(click.delay_ms, 3),
+                        'hold_ms': round(click.hold_ms, 3),
                         'button': click.button,
                         'click_type': click_type
                     })
@@ -702,6 +698,10 @@ class ClickTrackerGUI:
                         self.root.after(0, self.log_status, status_msg)
 
                     return self.is_testing
+
+                if not pressed and self.is_testing:
+                    # Release: close out the hold duration on the open click.
+                    self.session.close_click()
 
             self.listener = mouse.Listener(on_click=on_click)
             self.listener.start()

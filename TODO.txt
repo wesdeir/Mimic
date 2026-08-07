@@ -1,8 +1,44 @@
 # TODO List - Future Features & Anti-Cheat Innovations
 
-## Immediate TODOs (v3.6)
+## DONE in v4.0
+- [x] Break the code into smaller chunks -> now the `mimic/` package
+      (config / engine / session / widgets / gui), Mimic.py is a 51-line entry point.
+- [x] "Balanced" is now the default preset (no selection needed).
+- [x] CPS mystery SOLVED. Two independent causes, both fixed:
+      1. click() slept the button-hold AND the full delay, inflating every
+         press-to-press period by ~26ms (~21% low on reported CPS).
+      2. MimicBenchmarkTool counts mouse switch chatter as real clicks.
+- [!] HARDWARE: the mouse used for 4 of the 7 click_data recordings has switch
+      chatter -- a second actuation ~34ms after a real press (33.4-34.7ms, std
+      0.7ms; 20-43% of events in those files). It inflated measured CPS to
+      14.25 when the true rate was 8.14. Clean recordings: 150644, 180514,
+      180523. RE-RECORD training data on a non-chattering mouse before
+      refitting; there is not yet enough clean data to separate
+      butterfly/jitter/normal (all three clean sessions are the same ~9 CPS).
 
-and Jesus fucking christ break up the code into smaller more manageable chunks.
+## NEXT, in priority order (all measured against click_data/)
+
+### 0. RE-RECORD on a non-chattering mouse.
+Everything below is limited by having only 135 clean clicks. Skew/kurtosis
+estimates at n=135 have a standard error of ~0.21, so the engine is already
+fitted about as tightly as the data honestly supports. ~1000 clean clicks
+across distinct butterfly / jitter / normal sessions would let the three
+state tiers be measured instead of interpolated.
+
+### 0b. Record HOLD TIMES and fit them.
+MimicBenchmarkTool now captures hold_ms (press->release) and exports it, but
+no session has been recorded with it yet. The clicker's hold model is still
+random.gauss(26, 8) -- a guess with zero data behind it. Button hold duration
+is a first-class anti-cheat signal. Also check whether hold correlates with
+the following interval in real data; the engine currently treats them as
+independent, which may itself be a tell.
+
+### 0c. Verify POLL_RATE_HZ matches the mouse.
+Config.POLL_RATE_HZ is set to 1000 based on the integer-millisecond clustering
+in click_data/. If the target mouse polls at 500 or 125Hz, set it accordingly
+or the grid signature will be wrong in a new way.
+
+## Immediate TODOs
 
 ### 1. **Create an install wizard. Getting friends to test it out is proving to be a hassle without an installer - difficult for non-techincal users to setup currently. **
 
