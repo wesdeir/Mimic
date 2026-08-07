@@ -137,6 +137,7 @@ class AdaptiveClickerEngine:
         self.pause_count = 0
         self.outlier_count = 0
         self.peak_cps = 0.0
+        self.double_count = 0    # emulated hardware doubles this session
 
         # UI Graph tracking pipelines
         self.cps_history = deque(maxlen=60)
@@ -462,10 +463,28 @@ class AdaptiveClickerEngine:
         self.cps_history.append(current_cps)
         self.cps_timestamps.append(time.time())
 
+        # Optional hardware-double emulation. A double-clicking mouse fires a
+        # second actuation a few ms after the real press; the game counts it as
+        # a hit. Reproducing it keeps the synthetic click stream consistent
+        # with what this account's hardware has always produced.
+        consumed = pressure_ms
+        if Config.DOUBLE_CLICK_EMULATION and self._uniforms.next() < Config.DOUBLE_RATE:
+            gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
+            need = gap + Config.DOUBLE_HOLD_MS
+            # Only if the double fits inside the interval with room to spare.
+            if gap > pressure_ms and need < delay_ms * 0.75:
+                self.precise_sleep((gap - pressure_ms) / 1000.0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+                self.precise_sleep(Config.DOUBLE_HOLD_MS / 1000.0)
+                win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+                consumed = need
+                self.total_clicks += 1
+                self.double_count += 1
+
         # The hold is PART of the interval, not additional to it. Sleeping the
         # full delay here on top of pressure_ms was inflating every period by
         # ~26ms, which is why in-game CPS mods always read lower than Mimic did.
-        self.precise_sleep(max(0.0, delay_ms - pressure_ms) / 1000.0)
+        self.precise_sleep(max(0.0, delay_ms - consumed) / 1000.0)
 
     def get_current_cps(self) -> float:
         """Short-window CPS from the modelled press-to-press period."""
@@ -537,6 +556,10 @@ class AdaptiveClickerEngine:
             "state": STATE_NAMES[self._idx],
             "pattern_breaks": self.pattern_breaks,
             "burst_count": self.burst_count,
+            "double_count": self.double_count,
+            # What the game and anti-cheat actually count, doubles included.
+            "effective_cps": (1000.0 / self._mean if self._mean > 0 else 0.0)
+                             * (1.0 + (self.double_count / self._n if self._n else 0.0)),
             "pause_count": self.pause_count,
             "outlier_count": self.outlier_count,
             "enhanced_mode": self.enhanced_mode,
