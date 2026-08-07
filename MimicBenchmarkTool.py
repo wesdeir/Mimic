@@ -220,7 +220,11 @@ class ClickSession:
     # reported 14.25 CPS turned out to be 8.14 CPS plus a faulty mouse.
 
     CHATTER_MAX_MS = 50.0      # below this, an event is a double-actuation candidate
-    CHATTER_MAX_STD = 4.0      # mechanical bounce is far tighter than human timing
+    CHATTER_MAX_STD = 8.0      # mechanical bounce is far tighter than human timing.
+                               # Was 4.0, which missed a real doubling session
+                               # measured at 34.60ms +/- 4.31. Human fast
+                               # intervals scatter by tens of ms, so 8ms still
+                               # leaves a wide margin against false positives.
 
     def detect_chatter(self, delays: List[float]) -> Dict:
         """Identify mouse switch chatter -- phantom clicks from switch bounce.

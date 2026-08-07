@@ -1,0 +1,111 @@
+
+═══════════════════════════════════════════════════════════════════════
+DATA QUALITY  --  read this before using the session
+═══════════════════════════════════════════════════════════════════════
+
+Verdict: [OK] USABLE
+Technique: butterfly
+
+  Clean recording. Safe to fit engine parameters against.
+
+No hardware doubling in this session. CPS: 8.48
+
+USB POLLING RATE: ~1000 Hz (confidence 1.0)
+  Rayleigh scores: {125: 13.6, 250: 11.5, 500: 5.8, 1000: 256.0}
+  -> set Config.POLL_RATE_HZ = 1000 in the clicker.
+
+BUTTON HOLD TIME
+  mean 42.801 ms +/- 27.735 ms   median 42.933 ms
+  range 15.798 - 206.587 ms   (n=508)
+  correlation with next interval: +0.422
+
+FIT DIAGNOSTICS  (what an anti-cheat can compute for free)
+  autocorrelation  lag1 -0.138  lag2 +0.245  lag3 -0.093
+  runs-test z      +8.35   (0 = human-like; large |z| = streaky)
+  skew +1.912   kurtosis +13.382   mean/median 1.081
+  coeff. variation 0.550
+  clean intervals  508   corrected mean 117.828 ms +/- 64.862 ms
+
+╔════════════════════════════════════════════════════════════════════╗
+║ MIMIC CLICKING BENCHMARK ║
+║ SESSION ANALYSIS REPORT ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Generated: 2026-08-07 19:32:37
+
+═══════════════════════════════════════════════════════════════════════
+SESSION OVERVIEW
+═══════════════════════════════════════════════════════════════════════
+
+Total Clicks: 509
+├─ Single-clicks: 421 (82.7%)
+└─ Double-clicks: 88 (17.3%)
+
+Duration: 60.022s
+CPS (Average): 8.48 clicks/sec
+
+═══════════════════════════════════════════════════════════════════════
+CLICK TIMING ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+Min Delay: 5.873 ms
+Max Delay: 708.054 ms
+Avg Delay: 117.828 ms
+Std Deviation: 64.926 ms
+Consistency Rating: Inconsistent
+
+═══════════════════════════════════════════════════════════════════════
+PERCENTILE ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+P10 (Bottom 10%): 34.022 ms
+P25 (Lower Quarter): 75.971 ms
+P50 (MEDIAN): 108.99 ms ★ Your comfort zone
+P75 (Upper Quarter): 164.097 ms
+P90 (Top 10%): 185.005 ms
+
+═══════════════════════════════════════════════════════════════════════
+CLICK INTERVAL DISTRIBUTION
+═══════════════════════════════════════════════════════════════════════
+
+0-30ms:    1 clicks (  0.2%)
+30-50ms:   87 clicks ( 17.1%) ← Primary zone
+50-100ms:  125 clicks ( 24.6%)
+100-150ms:  125 clicks ( 24.6%)
+150-200ms:  141 clicks ( 27.8%)
+200-300ms:   25 clicks (  4.9%)
+300ms+:    4 clicks (  0.8%)
+
+═══════════════════════════════════════════════════════════════════════
+BURST ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+Total Bursts Detected: 4
+Avg Burst Length: 2 clicks
+Longest Burst: 2 consecutive clicks
+
+═══════════════════════════════════════════════════════════════════════
+FATIGUE ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+0s-6s        │ 12.17 CPS │  73 clicks
+6s-12s       │  9.33 CPS │  56 clicks
+12s-18s      │   8.5 CPS │  51 clicks
+18s-24s      │   8.5 CPS │  51 clicks
+24s-30s      │  7.67 CPS │  46 clicks
+30s-36s      │  8.17 CPS │  49 clicks
+36s-42s      │  7.83 CPS │  47 clicks
+42s-48s      │   8.0 CPS │  48 clicks
+48s-54s      │   8.0 CPS │  48 clicks
+54s-60s      │  6.67 CPS │  40 clicks
+
+═══════════════════════════════════════════════════════════════════════
+FILES GENERATED
+═══════════════════════════════════════════════════════════════════════
+
+Location: Desktop/click_data/
+
+• ClickData_YYYYMMDD_HHMMSS.csv (detailed click-by-click data)
+• ClickData_YYYYMMDD_HHMMSS_STATS.txt (this analysis)
+
+═══════════════════════════════════════════════════════════════════════
