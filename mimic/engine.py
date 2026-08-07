@@ -30,6 +30,20 @@ class StateParams:
     base_rate: float
     sigma: float
     phi: float
+
+    # Hold time and switch doubling are properties of the TECHNIQUE, not of
+    # the session, and they differ enormously between techniques. Measured
+    # over two 60s recordings each:
+    #   butterfly  hold median 33.6ms (sigma 0.645), 0.207 doubles per press
+    #   normal     hold median 78.6ms (sigma 0.359), 0.000 doubles per press
+    # Normal clicking does not double AT ALL -- the switch only bounces on
+    # butterfly's short sharp taps, never on a long deliberate press. Holding
+    # these globally meant applying butterfly's numbers to every state.
+    hold_median: float = 46.0
+    hold_sigma: float = 0.62
+    hold_rho: float = 0.35      # coupling between hold and the next interval
+    double_rate: float = 0.20   # doubles per intentional press
+
     sigma_shock: float = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -42,14 +56,20 @@ class StateParams:
         )
 
 
-# base_rate is the MEDIAN period; sigma is now a RELATIVE (log-scale) spread,
-# because delays are drawn log-normally -- real click data is right-skewed
-# (clean sessions: mean 110.8ms vs median 94.0ms), which additive Gaussian
-# noise cannot reproduce no matter how it is tuned.
+# base_rate is the median interval, sigma the log-scale spread, both derived
+# from the measured mean/CV of each technique. butterfly and normal are
+# measured over two 60s recordings each; jitter is INTERPOLATED between them
+# and is the one set of numbers here with no data behind it.
 STATES: dict[str, StateParams] = {
-    "butterfly": StateParams("butterfly", base_rate=84.0,  sigma=0.30, phi=0.02),
-    "jitter":    StateParams("jitter",    base_rate=93.0,  sigma=0.36, phi=0.06),
-    "normal":    StateParams("normal",    base_rate=101.0, sigma=0.40, phi=0.10),
+    "butterfly": StateParams("butterfly", base_rate=122.0, sigma=0.483, phi=0.02,
+                             hold_median=33.6, hold_sigma=0.645,
+                             hold_rho=0.43, double_rate=0.207),
+    "jitter":    StateParams("jitter",    base_rate=150.0, sigma=0.380, phi=0.06,
+                             hold_median=52.0, hold_sigma=0.500,
+                             hold_rho=0.55, double_rate=0.090),
+    "normal":    StateParams("normal",    base_rate=181.0, sigma=0.264, phi=0.10,
+                             hold_median=78.6, hold_sigma=0.359,
+                             hold_rho=0.68, double_rate=0.000),
 }
 
 STATE_NAMES: list[str] = list(STATES.keys())
@@ -138,8 +158,10 @@ class AdaptiveClickerEngine:
         self.outlier_count = 0
         self.peak_cps = 0.0
         self.double_count = 0    # emulated hardware doubles this session
-        # Drawn per session, not fixed -- see Config.DOUBLE_RATE_MIN/MAX.
-        self.double_rate = random.uniform(Config.DOUBLE_RATE_MIN, Config.DOUBLE_RATE_MAX)
+        # Session-to-session variation multiplies the per-technique rate, so a
+        # state that never doubles (normal, measured 0.000) stays at zero.
+        self.double_session_factor = random.uniform(Config.DOUBLE_SESSION_MIN,
+                                                    Config.DOUBLE_SESSION_MAX)
 
         # UI Graph tracking pipelines
         self.cps_history = deque(maxlen=60)
@@ -184,8 +206,11 @@ class AdaptiveClickerEngine:
             sigma = math.sqrt(math.log(1.0 + cv * cv)) if cv > 0 else 0.0
             median = mean / math.exp(0.5 * sigma * sigma)
 
+            base = STATES[name]
             rebuilt[name] = StateParams(
-                name, base_rate=median, sigma=sigma, phi=STATES[name].phi
+                name, base_rate=median, sigma=sigma, phi=base.phi,
+                hold_median=base.hold_median, hold_sigma=base.hold_sigma,
+                hold_rho=base.hold_rho, double_rate=base.double_rate,
             )
 
         self.states = rebuilt
@@ -208,7 +233,7 @@ class AdaptiveClickerEngine:
         for _ in range(n):
             d = self.calculate_delay()
             if (Config.DOUBLE_CLICK_EMULATION
-                    and self._uniforms.next() < self.double_rate):
+                    and self._uniforms.next() < self._current_double_rate()):
                 gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
                 if gap > 0 and d - gap >= Config.DOUBLE_MIN_REMAINDER_MS:
                     out.append(gap)
@@ -284,8 +309,8 @@ class AdaptiveClickerEngine:
         if not self.is_actively_clicking:
             self.is_actively_clicking = True
             self.user_baseline = random.uniform(0.88, 1.12)
-            self.double_rate = random.uniform(Config.DOUBLE_RATE_MIN,
-                                              Config.DOUBLE_RATE_MAX)
+            self.double_session_factor = random.uniform(Config.DOUBLE_SESSION_MIN,
+                                                        Config.DOUBLE_SESSION_MAX)
             self.drift = random.uniform(-0.15, 0.15)
             self.rhythm_phase = random.uniform(0, 2 * math.pi)
 
@@ -480,7 +505,7 @@ class AdaptiveClickerEngine:
         gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
         will_double = (
             Config.DOUBLE_CLICK_EMULATION
-            and self._uniforms.next() < self.double_rate
+            and self._uniforms.next() < self._current_double_rate()
             and delay_ms - (gap + Config.DOUBLE_HOLD_MS) >= Config.DOUBLE_MIN_REMAINDER_MS
         )
 
@@ -543,15 +568,30 @@ class AdaptiveClickerEngine:
             return max(1.0, random.gauss(Config.DOUBLE_PRESS_HOLD_MS,
                                          Config.DOUBLE_PRESS_HOLD_STD_MS))
 
+        # Hold parameters follow the CURRENT technique, not a global constant:
+        # butterfly holds ~34ms, normal ~79ms, and their coupling to the next
+        # interval differs too (+0.43 vs +0.68).
+        st = self.states[STATE_NAMES[self._idx]]
+
         # self._u is the AR(1) noise that drove this interval, so blending it
         # into the hold's own noise produces the observed positive coupling
         # without needing to model the joint distribution explicitly.
-        rho = Config.HOLD_DELAY_RHO
+        rho = st.hold_rho
         z = rho * self._u + math.sqrt(max(0.0, 1.0 - rho * rho)) * self._normals.next()
 
-        hold = Config.HOLD_MEDIAN_MS * math.exp(Config.HOLD_SIGMA * z)
+        hold = st.hold_median * math.exp(st.hold_sigma * z)
         hold = max(Config.HOLD_MIN_MS, hold)
         return min(hold, delay_ms * 0.6)
+
+    def _current_double_rate(self) -> float:
+        """Doubling probability for the press about to be made.
+
+        Driven by the current technique -- normal clicking measured 0.000
+        doubles per press and must stay at zero -- with a per-session factor
+        so the rate is not identical every session the way a constant would be.
+        """
+        return min(0.85, self.states[STATE_NAMES[self._idx]].double_rate
+                   * self.double_session_factor)
 
     def get_current_cps(self) -> float:
         """Short-window CPS from the modelled press-to-press period."""
