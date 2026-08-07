@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from typing import List, Dict
 from dataclasses import dataclass, field
+import math
 import statistics
 from pathlib import Path
 
@@ -51,6 +52,8 @@ class ClickSession:
     end_time: float = 0.0
     is_active: bool = False
     double_click_threshold: float = 0.05  # 50ms threshold
+    technique: str = "unlabelled"   # butterfly / jitter / normal -- lets the
+                                    # clicker fit each style as its own state
 
     def add_click(self, button: str = "LEFT"):
         """Record a click event"""
@@ -211,6 +214,160 @@ class ClickSession:
         else:
             return "Inconsistent"
 
+    # ── data quality ──────────────────────────────────────────────────────
+    # A recording is only worth fitting an engine to if it is actually the
+    # human doing the clicking. These checks exist because a session that
+    # reported 14.25 CPS turned out to be 8.14 CPS plus a faulty mouse.
+
+    CHATTER_MAX_MS = 50.0      # below this, an event is a double-actuation candidate
+    CHATTER_MAX_STD = 4.0      # mechanical bounce is far tighter than human timing
+
+    def detect_chatter(self, delays: List[float]) -> Dict:
+        """Identify mouse switch chatter -- phantom clicks from switch bounce.
+
+        A worn switch re-actuates a fixed few milliseconds after a real press.
+        The tell is the spread, not the speed: a human's fastest intervals
+        still scatter by tens of ms, while bounce repeats to well under 1ms.
+        Chatter is counted as a real click by every CPS meter, so it silently
+        inflates the measured rate and corrupts any model fitted to it.
+        """
+        fast = [d for d in delays if d < self.CHATTER_MAX_MS]
+        result = {
+            'chatter_detected': False,
+            'chatter_count': 0,
+            'chatter_pct': 0.0,
+            'chatter_mean_ms': 0.0,
+            'chatter_std_ms': 0.0,
+            'corrected_delays': list(delays),
+        }
+        if len(fast) < 3 or not delays:
+            return result
+
+        spread = statistics.pstdev(fast)
+        if spread > self.CHATTER_MAX_STD:
+            return result            # fast, but human-fast -- genuine burst clicking
+
+        # Fold each phantom event back into the interval that preceded it.
+        corrected = []
+        for d in delays:
+            if d < self.CHATTER_MAX_MS and corrected:
+                corrected[-1] += d
+            else:
+                corrected.append(d)
+
+        result.update(
+            chatter_detected=True,
+            chatter_count=len(fast),
+            chatter_pct=round(100.0 * len(fast) / len(delays), 1),
+            chatter_mean_ms=round(statistics.mean(fast), 3),
+            chatter_std_ms=round(spread, 3),
+            corrected_delays=corrected,
+        )
+        return result
+
+    @staticmethod
+    def estimate_poll_rate(delays: List[float]) -> Dict:
+        """Infer the mouse's USB polling rate from interval quantization.
+
+        A mouse can only raise an event on a polling boundary, so intervals
+        cluster near multiples of 1000/rate ms. Scoring each candidate rate by
+        the circular concentration of the residuals recovers the rate, which
+        is what the clicker needs for Config.POLL_RATE_HZ.
+        """
+        out = {'poll_rate_hz': None, 'poll_confidence': 0.0, 'poll_scores': {}}
+        if len(delays) < 30:
+            return out
+
+        best, best_score = None, 0.0
+        for hz in (125, 250, 500, 1000):
+            grid = 1000.0 / hz
+            ang = [2.0 * math.pi * (d / grid) for d in delays]
+            c = sum(math.cos(a) for a in ang) / len(ang)
+            s = sum(math.sin(a) for a in ang) / len(ang)
+            r = math.sqrt(c * c + s * s)          # mean resultant length, 0..1
+            z = len(delays) * r * r               # Rayleigh statistic
+            out['poll_scores'][hz] = round(z, 1)
+            if z > best_score:
+                best, best_score = hz, z
+
+        # Rayleigh z above ~10 is strong evidence against uniform scatter.
+        if best_score >= 10.0:
+            out['poll_rate_hz'] = best
+            out['poll_confidence'] = round(min(1.0, best_score / 50.0), 2)
+        return out
+
+    @staticmethod
+    def fit_diagnostics(delays: List[float]) -> Dict:
+        """The statistics an anti-cheat can compute for free.
+
+        Reported so a recording can be judged, and so engine output can be
+        held against the same yardstick as the human it is imitating.
+        """
+        n = len(delays)
+        if n < 20:
+            return {}
+
+        mean = statistics.mean(delays)
+        sd = statistics.pstdev(delays)
+
+        def acf(lag):
+            den = sum((x - mean) ** 2 for x in delays)
+            if not den:
+                return 0.0
+            return sum((delays[i] - mean) * (delays[i + lag] - mean)
+                       for i in range(n - lag)) / den
+
+        med = statistics.median(delays)
+        seq = [d > med for d in delays if d != med]
+        runs = 1 + sum(1 for i in range(len(seq) - 1) if seq[i] != seq[i + 1])
+        n1, n2 = sum(seq), len(seq) - sum(seq)
+        z = 0.0
+        if n1 and n2:
+            exp = 1 + 2 * n1 * n2 / (n1 + n2)
+            var = (exp - 1) * (exp - 2) / (n1 + n2 - 1)
+            if var > 0:
+                z = (runs - exp) / math.sqrt(var)
+
+        return {
+            'acf_lag1': round(acf(1), 3),
+            'acf_lag2': round(acf(2), 3),
+            'acf_lag3': round(acf(3), 3),
+            'runs_z': round(z, 2),
+            'skew': round(sum(((x - mean) / sd) ** 3 for x in delays) / n, 3) if sd else 0.0,
+            'kurtosis': round(sum(((x - mean) / sd) ** 4 for x in delays) / n - 3, 3) if sd else 0.0,
+            'mean_over_median': round(mean / med, 3) if med else 0.0,
+            'cv': round(sd / mean, 3) if mean else 0.0,
+        }
+
+    def get_hold_stats(self) -> Dict:
+        """Button hold duration -- a first-class anti-cheat signal."""
+        holds = [c.hold_ms for c in self.clicks if c.hold_ms > 0]
+        if len(holds) < 5:
+            return {'hold_samples': len(holds)}
+
+        # Does hold length predict the interval that follows? The clicker
+        # currently assumes it does not; if it does, that is itself a tell.
+        pairs = [(c.hold_ms, self.clicks[i + 1].delay_ms)
+                 for i, c in enumerate(self.clicks[:-1]) if c.hold_ms > 0]
+        corr = 0.0
+        if len(pairs) >= 10:
+            hs = [p[0] for p in pairs]
+            ds = [p[1] for p in pairs]
+            mh, md = statistics.mean(hs), statistics.mean(ds)
+            num = sum((h - mh) * (d - md) for h, d in pairs)
+            den = math.sqrt(sum((h - mh) ** 2 for h in hs) * sum((d - md) ** 2 for d in ds))
+            corr = num / den if den else 0.0
+
+        return {
+            'hold_samples': len(holds),
+            'hold_mean_ms': round(statistics.mean(holds), 3),
+            'hold_std_ms': round(statistics.pstdev(holds), 3),
+            'hold_min_ms': round(min(holds), 3),
+            'hold_max_ms': round(max(holds), 3),
+            'hold_median_ms': round(statistics.median(holds), 3),
+            'hold_delay_corr': round(corr, 3),
+        }
+
     def get_stats(self) -> dict:
         """Calculate detailed statistics"""
         if not self.clicks:
@@ -227,11 +384,37 @@ class ClickSession:
         percentiles = self._calculate_percentiles(delays)
         burst_info = self._calculate_burst_info(delays)
 
+        chatter = self.detect_chatter(delays)
+        corrected = chatter['corrected_delays']
+        duration_s = self.end_time - self.start_time
+
+        # True CPS counts intentional presses only, discarding switch bounce.
+        true_clicks = len(corrected) + 1
+        true_cps = (true_clicks / duration_s) if duration_s > 0 else 0.0
+
+        verdict, reasons = "USABLE", []
+        if chatter['chatter_detected']:
+            verdict = "CONTAMINATED"
+            reasons.append(
+                f"{chatter['chatter_pct']}% of events are switch chatter "
+                f"({chatter['chatter_mean_ms']}ms +/- {chatter['chatter_std_ms']}ms). "
+                f"Reported CPS {round(self.get_cps(), 2)} is really {round(true_cps, 2)}. "
+                f"Re-record on a different mouse before fitting anything to this."
+            )
+        if len(corrected) < 200:
+            if verdict == "USABLE":
+                verdict = "THIN"
+            reasons.append(
+                f"Only {len(corrected)} clean intervals. Shape statistics (skew, "
+                f"kurtosis) need ~500+ to be worth trusting; ~1000 to separate "
+                f"clicking techniques."
+            )
+
         return {
             'total_clicks': len(self.clicks),
             'single_clicks': single_clicks,
             'double_clicks': double_clicks,
-            'duration_seconds': round(self.end_time - self.start_time, 3),
+            'duration_seconds': round(duration_s, 3),
             'cps': round(self.get_cps(), 2),
             'min_delay_ms': round(min(delays), 3) if delays else 0,
             'max_delay_ms': round(max(delays), 3) if delays else 0,
@@ -241,15 +424,104 @@ class ClickSession:
             'fatigue_analysis': fatigue_analysis,
             'interval_distribution': interval_distribution,
             'percentiles': percentiles,
-            'burst_info': burst_info
+            'burst_info': burst_info,
+
+            # data quality
+            'technique': self.technique,
+            'verdict': verdict,
+            'verdict_reasons': reasons,
+            'true_cps': round(true_cps, 2),
+            'clean_intervals': len(corrected),
+            'corrected_avg_delay_ms': round(statistics.mean(corrected), 3) if corrected else 0,
+            'corrected_std_dev_ms': round(statistics.pstdev(corrected), 3) if len(corrected) > 1 else 0,
+            **{k: v for k, v in chatter.items() if k != 'corrected_delays'},
+            **self.estimate_poll_rate(corrected),
+            **self.get_hold_stats(),
+            'diagnostics': self.fit_diagnostics(corrected),
         }
+
+    @staticmethod
+    def _format_quality_report(stats: dict) -> str:
+        """Front-load the verdict: is this recording safe to fit against?"""
+        d = stats.get('diagnostics') or {}
+        mark = {"USABLE": "[OK]", "THIN": "[THIN]", "CONTAMINATED": "[BAD]"}
+        lines = [
+            "═══════════════════════════════════════════════════════════════════════",
+            "DATA QUALITY  --  read this before using the session",
+            "═══════════════════════════════════════════════════════════════════════",
+            "",
+            f"Verdict: {mark.get(stats.get('verdict'), '[?]')} {stats.get('verdict', 'UNKNOWN')}",
+            f"Technique: {stats.get('technique', 'unlabelled')}",
+            "",
+        ]
+        for r in stats.get('verdict_reasons', []):
+            lines.append(f"  ! {r}")
+        if not stats.get('verdict_reasons'):
+            lines.append("  Clean recording. Safe to fit engine parameters against.")
+        lines.append("")
+
+        if stats.get('chatter_detected'):
+            lines += [
+                "SWITCH CHATTER DETECTED",
+                f"  Phantom events : {stats['chatter_count']} ({stats['chatter_pct']}% of all clicks)",
+                f"  Bounce interval: {stats['chatter_mean_ms']} ms +/- {stats['chatter_std_ms']} ms",
+                f"  Reported CPS   : {stats.get('cps')}   <-- inflated, do not use",
+                f"  TRUE CPS       : {stats.get('true_cps')}",
+                "  Human timing never repeats to under ~1ms. This is the mouse,",
+                "  not you. Replace it or use a different one for training data.",
+                "",
+            ]
+        else:
+            lines += [f"No switch chatter detected. TRUE CPS: {stats.get('true_cps')}", ""]
+
+        rate = stats.get('poll_rate_hz')
+        if rate:
+            lines += [
+                f"USB POLLING RATE: ~{rate} Hz (confidence {stats.get('poll_confidence')})",
+                f"  Rayleigh scores: {stats.get('poll_scores')}",
+                f"  -> set Config.POLL_RATE_HZ = {rate} in the clicker.",
+                "",
+            ]
+        else:
+            lines += ["USB POLLING RATE: indeterminate (need more clicks, or",
+                      "  timestamps too jittery to see the grid).", ""]
+
+        if stats.get('hold_samples', 0) >= 5:
+            lines += [
+                "BUTTON HOLD TIME",
+                f"  mean {stats['hold_mean_ms']} ms +/- {stats['hold_std_ms']} ms   "
+                f"median {stats['hold_median_ms']} ms",
+                f"  range {stats['hold_min_ms']} - {stats['hold_max_ms']} ms   "
+                f"(n={stats['hold_samples']})",
+                f"  correlation with next interval: {stats['hold_delay_corr']:+.3f}",
+                "",
+            ]
+        else:
+            lines += ["BUTTON HOLD TIME: not captured (older recording).", ""]
+
+        if d:
+            lines += [
+                "FIT DIAGNOSTICS  (what an anti-cheat can compute for free)",
+                f"  autocorrelation  lag1 {d['acf_lag1']:+.3f}  lag2 {d['acf_lag2']:+.3f}  lag3 {d['acf_lag3']:+.3f}",
+                f"  runs-test z      {d['runs_z']:+.2f}   (0 = human-like; large |z| = streaky)",
+                f"  skew {d['skew']:+.3f}   kurtosis {d['kurtosis']:+.3f}   mean/median {d['mean_over_median']:.3f}",
+                f"  coeff. variation {d['cv']:.3f}",
+                f"  clean intervals  {stats.get('clean_intervals')}   "
+                f"corrected mean {stats.get('corrected_avg_delay_ms')} ms "
+                f"+/- {stats.get('corrected_std_dev_ms')} ms",
+                "",
+            ]
+        return "\n".join(lines)
 
     def _export_stats_to_txt(self, stats: dict, filename: str):
         """Export detailed statistics to text file"""
         base, _ = os.path.splitext(filename)
         stats_filename = f"{base}_STATS.txt"
 
+        quality_report = self._format_quality_report(stats)
+
         stats_content = f"""
+{quality_report}
 ╔════════════════════════════════════════════════════════════════════╗
 ║ MIMIC CLICKING BENCHMARK ║
 ║ SESSION ANALYSIS REPORT ║
@@ -496,6 +768,35 @@ class ClickTrackerGUI:
             )
             rb.pack(side="left", padx=8)
 
+        # Technique label. Without it every recording pools together, and the
+        # clicker cannot fit butterfly/jitter/normal as separate states -- it
+        # has to interpolate them, which is guesswork dressed up as data.
+        tk.Label(
+            duration_frame,
+            text="🖱️ Clicking Technique (label your recording)",
+            font=("Arial", 11, "bold"),
+            bg=self.panel_color,
+            fg=self.fg_color
+        ).pack(pady=(10, 5))
+
+        self.technique_var = tk.StringVar(value="normal")
+        technique_frame = tk.Frame(duration_frame, bg=self.panel_color)
+        technique_frame.pack(pady=(0, 6))
+
+        for tech in ("butterfly", "jitter", "normal"):
+            tk.Radiobutton(
+                technique_frame,
+                text=tech.capitalize(),
+                variable=self.technique_var,
+                value=tech,
+                bg=self.panel_color,
+                fg=self.fg_color,
+                selectcolor=self.accent_color,
+                activebackground=self.button_hover,
+                activeforeground=self.fg_color,
+                font=("Arial", 10)
+            ).pack(side="left", padx=10)
+
         tk.Label(duration_frame, text="", bg=self.panel_color, height=1).pack()
 
         # ════════════════════════════════════════════════════════════════
@@ -645,7 +946,8 @@ class ClickTrackerGUI:
 
             self.session = ClickSession(
                 session_name=datetime.now().strftime("%H%M%S"),
-                duration_seconds=duration
+                duration_seconds=duration,
+                technique=self.technique_var.get()
             )
 
             self.is_testing = True
@@ -755,6 +1057,14 @@ class ClickTrackerGUI:
 
         stats = self.session.get_stats()
 
+        _mark = {"USABLE": "[OK]", "THIN": "[THIN]", "CONTAMINATED": "[BAD]"}
+        _verdict = f"{_mark.get(stats.get('verdict'), '[?]')} {stats.get('verdict', 'UNKNOWN')}"
+        _warnings = "".join(f"\n  ! {r}\n" for r in stats.get('verdict_reasons', []))
+        _truecps = ""
+        if stats.get('chatter_detected'):
+            _truecps = (f"\nTRUE CPS (chatter removed): {stats.get('true_cps')}"
+                        f"   <-- use this, not the figure above\n")
+
         results_str = f"""
 ═════════════════════════════════════════════════
 
@@ -762,6 +1072,8 @@ SESSION RESULTS
 
 ═════════════════════════════════════════════════
 
+DATA QUALITY: {_verdict}   [technique: {stats.get('technique', 'unlabelled')}]
+{_warnings}
 Total Clicks: {stats['total_clicks']}
 
 Single-clicks: {stats['single_clicks']}
@@ -771,7 +1083,7 @@ Double-clicks: {stats['double_clicks']}
 Duration: {stats['duration_seconds']}s
 
 CPS (Average): {stats['cps']} clicks/sec
-
+{_truecps}
 CLICK TIMING ANALYSIS:
 
 Min Delay: {stats['min_delay_ms']} ms
