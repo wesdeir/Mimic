@@ -138,6 +138,8 @@ class AdaptiveClickerEngine:
         self.outlier_count = 0
         self.peak_cps = 0.0
         self.double_count = 0    # emulated hardware doubles this session
+        # Drawn per session, not fixed -- see Config.DOUBLE_RATE_MIN/MAX.
+        self.double_rate = random.uniform(Config.DOUBLE_RATE_MIN, Config.DOUBLE_RATE_MAX)
 
         # UI Graph tracking pipelines
         self.cps_history = deque(maxlen=60)
@@ -189,6 +191,31 @@ class AdaptiveClickerEngine:
         self.states = rebuilt
         self.preset_name = preset_name
         self.reset_state(STATE_NAMES[self._idx])
+
+    def simulate_stream(self, n: int) -> list:
+        """Produce the inter-event intervals the GAME would see, offline.
+
+        calculate_delay() returns the interval between intentional presses.
+        With double-click emulation on, the emitted event stream also contains
+        the hardware doubles, so a real click interval d becomes two events at
+        [gap, d - gap]. Anti-cheats observe that merged stream, not the motor
+        sequence, so it is the merged stream that has to look human.
+
+        Advances no wall-clock time and drives no mouse -- for validation and
+        for the differential analysis page.
+        """
+        out = []
+        for _ in range(n):
+            d = self.calculate_delay()
+            if (Config.DOUBLE_CLICK_EMULATION
+                    and self._uniforms.next() < self.double_rate):
+                gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
+                if gap > 0 and d - gap >= Config.DOUBLE_MIN_REMAINDER_MS:
+                    out.append(gap)
+                    out.append(d - gap)
+                    continue
+            out.append(d)
+        return out
 
     def export_to_csv(self, filepath: str) -> int:
         """Write the retained delay buffer as CSV. Returns rows written.
@@ -257,6 +284,8 @@ class AdaptiveClickerEngine:
         if not self.is_actively_clicking:
             self.is_actively_clicking = True
             self.user_baseline = random.uniform(0.88, 1.12)
+            self.double_rate = random.uniform(Config.DOUBLE_RATE_MIN,
+                                              Config.DOUBLE_RATE_MAX)
             self.drift = random.uniform(-0.15, 0.15)
             self.rhythm_phase = random.uniform(0, 2 * math.pi)
 
@@ -468,11 +497,11 @@ class AdaptiveClickerEngine:
         # a hit. Reproducing it keeps the synthetic click stream consistent
         # with what this account's hardware has always produced.
         consumed = pressure_ms
-        if Config.DOUBLE_CLICK_EMULATION and self._uniforms.next() < Config.DOUBLE_RATE:
+        if Config.DOUBLE_CLICK_EMULATION and self._uniforms.next() < self.double_rate:
             gap = random.gauss(Config.DOUBLE_GAP_MS, Config.DOUBLE_GAP_STD_MS)
             need = gap + Config.DOUBLE_HOLD_MS
             # Only if the double fits inside the interval with room to spare.
-            if gap > pressure_ms and need < delay_ms * 0.75:
+            if gap > pressure_ms and delay_ms - need >= Config.DOUBLE_MIN_REMAINDER_MS:
                 self.precise_sleep((gap - pressure_ms) / 1000.0)
                 win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
                 self.precise_sleep(Config.DOUBLE_HOLD_MS / 1000.0)

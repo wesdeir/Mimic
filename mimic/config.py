@@ -61,13 +61,25 @@ class Config:
     # always used, and raises combat output without raising the hand rate.
     #
     # Values measured from the operator's own recordings in click_data/:
-    # doubles land 34.0ms +/- 0.68ms after the real press, on 20.7-42.9% of
-    # presses depending on session.
-    DOUBLE_CLICK_EMULATION = False
-    DOUBLE_RATE = 0.30
-    DOUBLE_GAP_MS = 34.0
-    DOUBLE_GAP_STD_MS = 0.68
+    # doubles land 34.4ms +/- 1.6ms after the real press. The rate is drawn
+    # fresh per session rather than fixed, because the real thing is not fixed:
+    # measured sessions ran 0.26, 0.43, 0.47 and 0.79 doubles per press.
+    # The draw range sits slightly above that because DOUBLE_MIN_REMAINDER_MS
+    # rejects ~16% of attempts; post-rejection the realised rate lands on the
+    # measured 0.49.
+    # A constant rate would make Mimic more self-consistent than the hardware
+    # it is imitating, and consistency is what anti-cheats actually flag.
+    DOUBLE_CLICK_EMULATION = True
+    DOUBLE_RATE_MIN = 0.30
+    DOUBLE_RATE_MAX = 0.88
+    DOUBLE_GAP_MS = 34.4        # pooled mean across all doubling sessions
+    DOUBLE_GAP_STD_MS = 1.6     # pooled spread (per-session: 0.46 - 3.43ms)
     DOUBLE_HOLD_MS = 8.0
+    # A double must leave a plausible interval behind it. Measured remainders
+    # after a real double run a median of 122ms with only 6.7% under 50ms, so
+    # doubles land on the longer presses. Without this floor the engine doubled
+    # on short intervals too and emitted a flood of sub-50ms events.
+    DOUBLE_MIN_REMAINDER_MS = 50.0
     
     # Adaptive mode parameters
     TECHNIQUE_TRANSITION_MIN = 5   # Min clicks before switching
@@ -268,12 +280,12 @@ class ClickEnginePresets:
     PRESETS = {
         "Conservative": {
             "description": "Slower than your baseline - safest, lowest variance flags",
-            "butterfly_mean": 108,
-            "butterfly_std": 38,
-            "jitter_mean": 122,
-            "jitter_std": 44,
-            "normal_mean": 134,
-            "normal_std": 50,
+            "butterfly_mean": 131,
+            "butterfly_std": 46,
+            "jitter_mean": 147,
+            "jitter_std": 53,
+            "normal_mean": 162,
+            "normal_std": 60,
             "burst_mean": 92,
             "burst_std": 26,
             "burst_max_clamp": 70,
@@ -283,12 +295,12 @@ class ClickEnginePresets:
 
         "Balanced": {
             "description": "(Recommended) - matches your measured human baseline",
-            "butterfly_mean": 96,
-            "butterfly_std": 36,
-            "jitter_mean": 108,
-            "jitter_std": 42,
-            "normal_mean": 120,
-            "normal_std": 47,
+            "butterfly_mean": 117,
+            "butterfly_std": 44,
+            "jitter_mean": 131,
+            "jitter_std": 51,
+            "normal_mean": 146,
+            "normal_std": 57,
             "burst_mean": 82,
             "burst_std": 24,
             "burst_max_clamp": 60,
@@ -298,12 +310,12 @@ class ClickEnginePresets:
 
         "Aggressive": {
             "description": "Faster than your baseline - stays under the CPS cap",
-            "butterfly_mean": 82,
-            "butterfly_std": 32,
-            "jitter_mean": 92,
-            "jitter_std": 38,
-            "normal_mean": 102,
-            "normal_std": 42,
+            "butterfly_mean": 99,
+            "butterfly_std": 39,
+            "jitter_mean": 111,
+            "jitter_std": 46,
+            "normal_mean": 123,
+            "normal_std": 51,
             "burst_mean": 70,
             "burst_std": 20,
             "burst_max_clamp": 52,
