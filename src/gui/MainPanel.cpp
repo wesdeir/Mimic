@@ -43,6 +43,19 @@ void MainPanel::handleKeyboardNav() {
     if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) {
         focusedIndex_ = (focusedIndex_ - 1 + kItemCount) % kItemCount;
     }
+    // Local-only: this is IsKeyPressed, not a RegisterHotKey global hotkey,
+    // so it can never fire unless Mimic's own window already has input
+    // focus -- Backspace is far too common a text-editing key to ever
+    // register globally (see main.cpp's Insert hotkey for the global path).
+    if (ImGui::IsKeyPressed(ImGuiKey_Backspace)) {
+        hideRequested_ = true;
+    }
+}
+
+bool MainPanel::consumeHideRequest() {
+    const bool requested = hideRequested_;
+    hideRequested_ = false;
+    return requested;
 }
 
 void MainPanel::draw() {
@@ -69,7 +82,8 @@ void MainPanel::draw() {
         ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "[ DISABLED ]");
     }
 
-    ImGui::TextDisabled("F4 toggle | Hold Left Click to attack | Up/Down + Enter to navigate");
+    ImGui::TextDisabled("F4 clicker | Insert hide/show | Hold Left Click to attack");
+    ImGui::TextDisabled("Up/Down + Enter to navigate | Backspace to hide");
     ImGui::Separator();
 
     const EngineStats stats = controller_.currentStats();

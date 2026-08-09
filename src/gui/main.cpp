@@ -16,6 +16,7 @@
 #include "AppController.h"
 #include "app_info.h"
 #include "AppTheme.h"
+#include "GlobalHotkeys.h"
 #include "MainPanel.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
@@ -30,6 +31,34 @@ bool g_SwapChainOccluded = false;
 UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
 mimic::app::AppController* g_controller = nullptr;
+mimic::app::GlobalHotkeys* g_visibilityHotkey = nullptr;
+bool g_panelVisible = true;
+
+// Insert (global) and Backspace (local, see MainPanel::consumeHideRequest)
+// both funnel through here so there's exactly one place that actually
+// touches window visibility.
+//
+// KNOWN OPEN ISSUE (found via automated testing, unconfirmed with real
+// hardware input): hiding the window via ShowWindow(SW_HIDE) while it holds
+// focus, specifically when that focus was granted via an external process's
+// SetForegroundWindow() call, was observed to permanently stop delivering
+// WM_HOTKEY for the rest of the process's life -- re-registering the hotkey
+// (GlobalHotkeys::refresh(), called below) did not fix it. Every attempt to
+// reproduce this with realistic input (the window's natural launch focus, a
+// simulated mouse click) failed to reproduce it, so this may be a testing-
+// harness artifact rather than a real bug -- SetForegroundWindow from an
+// unrelated process is a different code path than how a real user's click/
+// Alt-Tab grants focus. Needs a real hands-on-keyboard check.
+void SetPanelVisible(HWND hwnd, bool visible) {
+    ::ShowWindow(hwnd, visible ? SW_SHOW : SW_HIDE);
+    g_panelVisible = visible;
+
+    // Defensive (see GlobalHotkeys::refresh()): re-arm both hotkeys after
+    // every visibility change so a dropped registration can't leave the
+    // panel permanently stuck.
+    if (g_visibilityHotkey) g_visibilityHotkey->refresh();
+    if (g_controller) g_controller->refreshHotkey();
+}
 
 void CreateRenderTarget() {
     ID3D11Texture2D* pBackBuffer = nullptr;
@@ -119,6 +148,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (g_controller) {
                 g_controller->handleHotkeyMessage(wParam);
             }
+            if (g_visibilityHotkey) {
+                g_visibilityHotkey->handleHotkeyMessage(wParam);
+            }
             return 0;
         case WM_DESTROY:
             PostQuitMessage(0);
@@ -175,6 +207,13 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     g_controller = &controller;
     mimic::gui::MainPanel mainPanel(controller);
 
+    // Global Insert toggle: works while the game (or anything else) has
+    // focus, unlike MainPanel's local Backspace hide (see GlobalHotkeys.h
+    // for why Backspace itself can't safely be global).
+    mimic::app::GlobalHotkeys visibilityHotkey(hwnd, VK_INSERT,
+                                                [hwnd] { SetPanelVisible(hwnd, !g_panelVisible); });
+    g_visibilityHotkey = &visibilityHotkey;
+
     bool done = false;
     while (!done) {
         MSG msg;
@@ -187,6 +226,15 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         }
         if (done) {
             break;
+        }
+
+        // Skip the frame entirely while hidden -- no point spending
+        // GPU/CPU time drawing something nobody can see, and this is
+        // meant to sit hidden during most of an actual play session.
+        // Messages (so hotkeys still work) are still pumped above.
+        if (!g_panelVisible) {
+            ::Sleep(10);
+            continue;
         }
 
         if (g_SwapChainOccluded && g_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED) {
@@ -207,6 +255,9 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         ImGui::NewFrame();
 
         mainPanel.draw();
+        if (mainPanel.consumeHideRequest()) {
+            SetPanelVisible(hwnd, false);
+        }
 
         ImGui::Render();
         const float clearColor[4] = {0.05f, 0.05f, 0.05f, 1.00f};

@@ -36,6 +36,7 @@ public:
     AppController& operator=(const AppController&) = delete;
 
     void handleHotkeyMessage(WPARAM hotkeyId) { hotkeys_.handleHotkeyMessage(hotkeyId); }
+    void refreshHotkey() { hotkeys_.refresh(); }
 
     bool isEnabled() const { return enabled_.load(std::memory_order_relaxed); }
     void setEnabled(bool enabled) { enabled_.store(enabled, std::memory_order_relaxed); }

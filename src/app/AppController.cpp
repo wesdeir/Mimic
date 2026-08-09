@@ -9,7 +9,7 @@ using namespace std::chrono_literals;
 AppController::AppController(HWND hwnd)
     : engine_(/*enhancedMode=*/true, /*presetName=*/"Balanced"),
       presetName_("Balanced"),
-      hotkeys_(hwnd, [this] { toggleEnabled(); }) {
+      hotkeys_(hwnd, VK_F4, [this] { toggleEnabled(); }) {
     clickThread_ = std::thread(&AppController::clickThreadMain, this);
 }
 
