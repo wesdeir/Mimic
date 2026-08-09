@@ -6,6 +6,8 @@ add_library(mimic_core STATIC
     config/RiskAssessor.cpp
     config/PresetManager.cpp
     engine/AdaptiveClickerEngine.cpp
+    session/SessionManager.cpp
+    session/HumanClickTracker.cpp
 )
 
 target_include_directories(mimic_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

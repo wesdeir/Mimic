@@ -36,6 +36,15 @@ inline const RiskThresholds& thresholdsFor(RiskMode mode) {
 
 enum class RiskLevel { Low, Medium, High };
 
+inline const char* riskLevelName(RiskLevel level) {
+    switch (level) {
+        case RiskLevel::Low: return "LOW";
+        case RiskLevel::Medium: return "MEDIUM";
+        case RiskLevel::High: return "HIGH";
+    }
+    return "HIGH";
+}
+
 struct RiskAssessment {
     RiskLevel risk;
     int score = 0;

@@ -4,6 +4,7 @@ add_executable(mimic_tests
     test_presets.cpp
     test_risk_assessor.cpp
     test_click_data_calibration.cpp
+    test_session_io.cpp
 )
 
 target_link_libraries(mimic_tests PRIVATE mimic_core Catch2::Catch2WithMain)
