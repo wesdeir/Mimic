@@ -21,3 +21,6 @@ Thumbs.db
 mimic_data/
 mimic_sessions/
 *.session.json
+
+# Dear ImGui runtime layout cache
+imgui.ini
