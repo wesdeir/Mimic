@@ -66,6 +66,20 @@ struct StateParams {
         }
         sigmaShock = sigma * std::sqrt(1.0 - phi * phi);
     }
+
+    // Moment-matching factory: presets are authored as absolute mean/std in
+    // ms, but the engine draws log-normally from (median, relative sigma).
+    // This is the exact conversion, so a preset's stated mean/std come out
+    // as the mean/std actually produced (ported from
+    // AdaptiveClickerEngine.set_preset()'s docstring/derivation).
+    static StateParams fromMoments(ClickState s, double meanMs, double stdMs, double phi,
+                                    double holdMedianMs, double holdSigma, double holdRho,
+                                    double doubleRate) {
+        const double cv = meanMs > 0.0 ? stdMs / meanMs : 0.0;
+        const double sigma = cv > 0.0 ? std::sqrt(std::log(1.0 + cv * cv)) : 0.0;
+        const double median = meanMs / std::exp(0.5 * sigma * sigma);
+        return StateParams(s, median, sigma, phi, holdMedianMs, holdSigma, holdRho, doubleRate);
+    }
 };
 
 // base_rate is the median interval, sigma the log-scale spread, both derived
