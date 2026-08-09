@@ -1,7 +1,5 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -36,15 +34,6 @@ inline const RiskThresholds& thresholdsFor(RiskMode mode) {
 
 enum class RiskLevel { Low, Medium, High };
 
-inline const char* riskLevelName(RiskLevel level) {
-    switch (level) {
-        case RiskLevel::Low: return "LOW";
-        case RiskLevel::Medium: return "MEDIUM";
-        case RiskLevel::High: return "HIGH";
-    }
-    return "HIGH";
-}
-
 struct RiskAssessment {
     RiskLevel risk;
     int score = 0;
@@ -57,24 +46,6 @@ struct RiskAssessment {
 class RiskAssessor {
 public:
     static RiskAssessment assess(const mimic::core::engine::EngineStats& stats);
-};
-
-// Ported from mimic/config.py::RiskVisualization: score(0-100) -> label
-// tier, used for the more granular Dashboard indicator (distinct from the
-// 3-bucket RiskAssessor::assess() risk level).
-struct RiskVisualizationLevel {
-    int minScore;
-    const char* label;
-    const char* colorHex;
-    const char* description;
-};
-
-class RiskVisualization {
-public:
-    static const RiskVisualizationLevel& levelFor(int score);
-
-private:
-    static const std::array<RiskVisualizationLevel, 6>& levels();
 };
 
 } // namespace mimic::core::config

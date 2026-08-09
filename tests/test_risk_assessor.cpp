@@ -62,9 +62,3 @@ TEST_CASE("RiskAssessor scores a mid-tier standard-mode session as MEDIUM risk",
     CHECK(result.score == 67);
     CHECK(result.risk == RiskLevel::Medium);
 }
-
-TEST_CASE("RiskVisualization tiers are ordered and cover the full 0-100 range", "[risk]") {
-    CHECK(std::string(RiskVisualization::levelFor(100).label) == "EXCELLENT");
-    CHECK(std::string(RiskVisualization::levelFor(0).label) == "CRITICAL");
-    CHECK(std::string(RiskVisualization::levelFor(57).label) == "ACCEPTABLE");
-}

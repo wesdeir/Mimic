@@ -1,5 +1,6 @@
 """Generates golden reference CSVs from the ORIGINAL, unmodified Python
-engine (mimic/engine.py) for the C++ parity test suite to compare against.
+engine (python_legacy/mimic/engine.py) for the C++ parity test suite to
+compare against.
 
 This does not touch the mouse: it only calls simulate_stream(), which
 draws intervals without driving win32 mouse events. win32api/win32con are
@@ -24,7 +25,7 @@ sys.modules.setdefault("win32api", win32api_stub)
 sys.modules.setdefault("win32con", win32con_stub)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT / "python_legacy"))
 
 from mimic.engine import AdaptiveClickerEngine  # noqa: E402
 

@@ -1,106 +1,60 @@
-# Mimic: Undetectable Auto Clicker & Click Benchmark Suite
+# Mimic
 
-Mimic is an advanced automation framework designed to simulate human clicking patterns with high statistical fidelity. Unlike traditional macro software that uses fixed delays or simple randomization, Mimic employs a statistical distribution engine (Gaussian and Weibull) to generate click timings that closely resemble human physiological performance.
+Mimic is a Windows-only auto-clicker that simulates human clicking patterns with high statistical fidelity, using a Markov-chain state model and log-normal delay draws instead of fixed or naively-randomized delays. It targets Minecraft-style combat clicking and is built to keep its output statistically close to real human recordings (see `click_data/`).
 
-This project includes two core components:
-1. **Mimic v4.0**: The primary automation engine with real-time risk assessment and adaptive pattern switching.
-2. **Mimic Benchmark Tool (v1.3.0)**: A standalone analytics utility for recording, analyzing, and benchmarking clicking performance (CPS, consistency, and fatigue).
+This is the active C++/Dear ImGui rewrite of the project. The original Python/Tkinter implementation lives in `python_legacy/` as a reference -- it's what the C++ engine's constants were fitted against, and it's kept for that reason, not for further development.
 
-## Features
+## Status
 
-### **Core Functionality**
-- **Hold-to-Click Activation** - Natural left-click hold interface using pynput
-- **Adaptive Mixed Mode** - Dynamically blends butterfly/jitter/normal clicking techniques
-- **Statistical Engine** - Gaussian (Box-Muller) + Weibull distributions for realistic delays
-- **Variance Targeting** - Configurable 1,500-3,000 variance range (optimal for AGC bypass)
-- **Real-Time Risk Assessment** - Live detection risk scoring (0-100)
-
-### **Anti-Detection Systems**
-- Pattern break detection with dynamic adjustment
-- 2% outlier injection (micro-pauses, panic bursts)
-- Session re-randomization for behavioral diversity
-- Drift accumulation and rhythm oscillation
-- Configurable burst/pause mechanics
-
-### **Analysis & Training**
-- Real-time CPS graphing and delay distribution histograms
-- Human baseline training mode (butterfly/jitter/normal)
-- Differential analysis (compare human vs bot patterns)
-- Session history tracking with JSON persistence
-- CSV/TXT export for external analysis
-
----
+**v1 scope, by design:** the clicker running, live basic stats, and the 3 built-in presets, in one compact keyboard-navigated panel -- deliberately not the original Python GUI's full 7-tab feature set. That functionality (detailed analytics, graphs, session history, human-baseline training/benchmarking, differential comparison) is **deferred, not removed from the design** -- it can be added back as its own screen(s) later without redesigning the engine underneath it.
 
 ## Requirements
 
-Python 3.8+
+- Windows 10/11
+- Visual Studio Build Tools (MSVC) with the Windows 10/11 SDK
+- CMake 3.24+
+- Git (for the Dear ImGui submodule)
+
+## Building
+
 ```cmd
-pip install pywin32
-pip install pynput
-pip install keyboard
+git submodule update --init --recursive
+cmake -S . -B build -G Ninja
+cmake --build build --target Mimic
 ```
 
-**Platform:** Windows only (uses Win32 API for mouse events)
+The build produces `build/src/gui/Mimic.exe`. Dependencies (Catch2 for the test suite) are fetched automatically via CMake's `FetchContent`; Dear ImGui is a pinned git submodule under `third_party/imgui`.
 
----
+### Running the tests
 
-## Quick Start
-
-1. **Install dependencies:**
 ```cmd
-python -m pip install pywin32 pynput keyboard
+cmake --build build --target mimic_tests
+build/tests/mimic_tests.exe
 ```
 
-2. **Run Mimic:**
-```cmd
-python mimic.py
-```
+The suite validates the click-timing engine against a frozen reference run of the original Python engine (`tools/python_reference/golden/`) and against the real recordings in `click_data/`, plus closed-form checks on the underlying math.
 
-3. **Activate & Click:**
-- Press `F4` to enable
-- Hold `LEFT CLICK` to auto-click
-- Release to stop
-
----
-
-## Keyboard Controls
+## Using it
 
 | Key | Action |
 |-----|--------|
-| `F4` | Toggle On/Off |
-| `LEFT CLICK` | Attack (Hold) |
-| `F6` | Export CSV Data |
-| `F7` | Start/Stop Training |
-| `F8` | Export Training Data |
-| `F9` | Toggle Enhanced Mode |
-| `← →` | Navigate Pages |
+| `F4` | Toggle clicking on/off (works even when another window has focus) |
+| Hold `LEFT CLICK` | Auto-click while enabled |
+| `Up` / `Down` | Move between the mode toggle and presets |
+| `Enter` | Apply the highlighted setting |
 
----
+## Project layout
 
-## GUI Overview
-
-### **7-Tab Interface:**
-1. **Dashboard** - Live stats, risk assessment, quick actions
-2. **Settings** - Mode configuration, export paths, controls
-3. **Analytics** - Detection metrics, session history
-4. **Graphs** - Real-time CPS line graph, delay histograms
-5. **Training** - Record human baseline clicking patterns
-6. **History** - View all training sessions
-7. **Compare** - Differential analysis (human vs bot)
-
----
-
-## Target Metrics
-
-### **Current metrics using the most up to date clicking engine**
-- **CPS Range:** 7-12 average, 15-16 spikes allowed
-- **Target Variance:** 2,200+ (optimal for AGC)
-- **Acceptable Range:** 1,500-3,500
-- **Detection Risk:** LOW (score 80+ || <= 1500 variance)
-Note: "score" is a way that the program tracks instances where an anti cheat might begin to recognize patterns. Once this score reaches a certain weighted threshold, the aforementioned Anti-Detection Systems engage to bring the detection risk back to optimal state. 
-Note: The longer a session runs, the more likely you will see a higher detection risk.
-
----
+```
+src/
+  core/   -- headless engine/config logic (no GUI, no Win32 GUI deps)
+  app/    -- click thread, physical-hold input hook, global hotkey, orchestration
+  gui/    -- Dear ImGui panel and Win32/DirectX11 entry point
+tests/    -- Catch2 test suite
+tools/python_reference/  -- golden reference data generated from python_legacy/
+click_data/               -- real click recordings the engine's constants are fitted to
+python_legacy/            -- original Python implementation (reference only)
+```
 
 ## Disclaimer
 

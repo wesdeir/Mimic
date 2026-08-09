@@ -9,8 +9,6 @@
 
 #include <cmath>
 
-#include <nlohmann/json.hpp>
-
 #include "engine/StateParams.h"
 #include "config/ClickEnginePresets.h"
 
@@ -70,23 +68,6 @@ TEST_CASE("Built-in presets moment-match without throwing and stay ordered Conse
         CHECK_NOTHROW(StateParams::fromMoments(ClickState::Normal, cfg.normalMean, cfg.normalStd,
                                                 0.10, 78.6, 0.359, 0.68, 0.000));
     }
-}
-
-TEST_CASE("PresetConfig round-trips through JSON, matching Python's dict.get(...) defaulting", "[presets][json]") {
-    const PresetConfig* balanced = ClickEnginePresets::find("Balanced");
-    REQUIRE(balanced);
-
-    nlohmann::json j = *balanced;
-    PresetConfig roundTripped = j.get<PresetConfig>();
-    CHECK(roundTripped.normalMean == balanced->normalMean);
-    CHECK(roundTripped.description == balanced->description);
-
-    // A hand-edited file missing fields should default rather than throw
-    // (mirrors Python's PresetManager loading a partial custom preset).
-    nlohmann::json partial = {{"normal_mean", 200.0}};
-    PresetConfig fromPartial = partial.get<PresetConfig>();
-    CHECK(fromPartial.normalMean == 200.0);
-    CHECK(fromPartial.butterflyMean == 0.0);
 }
 
 TEST_CASE("StateParams rejects invalid phi/sigma", "[presets][math]") {

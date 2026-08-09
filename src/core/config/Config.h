@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 // Ported from mimic/config.py::Config. Every constant here encodes a
 // measured fact from click_data/ or a deliberately chosen anti-detection
 // threshold -- see the comment on each for what it is anchored to. Do not
@@ -18,22 +16,6 @@ inline constexpr double kSustainedCpsCap = 11.0;      // true human peak was 9.6
 // Enhanced Mode has a wider range.
 inline constexpr double kEnhancedMinDelayMs = 30.0;
 inline constexpr double kEnhancedMaxDelayMs = 450.0;
-
-// Gaussian distribution parameters (measured, not guessed).
-inline constexpr double kEnhancedTargetMeanMs = 111.0;
-inline constexpr double kEnhancedTargetStdDevMs = 42.0;
-
-// Realistic variance targets -- real clean-session variance is ~2789.
-inline constexpr double kEnhancedIdealVariance = 1800.0;
-inline constexpr double kEnhancedTargetVariance = 2800.0;
-inline constexpr double kEnhancedMaxVariance = 4200.0;
-
-inline constexpr double kStandardIdealVariance = 600.0;
-inline constexpr double kStandardTargetVariance = 900.0;
-inline constexpr double kStandardMaxVariance = 1500.0;
-
-inline constexpr double kMinVarianceThreshold = 800.0;
-inline constexpr int kPatternCheckWindow = 20;
 
 // Hardware emulation: a real mouse only raises events on a USB polling
 // boundary, so human intervals cluster near whole milliseconds. Set to the
@@ -65,43 +47,14 @@ inline constexpr double kDoubleHoldMs = 17.0;
 // recordings. Real holds are bimodal:
 //   presses that get doubled : 17.27ms +/- 1.50  (the switch, not the hand)
 //   every other press        : 46.14ms +/- 26.73 (lognormal, median 46)
-inline constexpr double kHoldMedianMs = 46.0;
-inline constexpr double kHoldSigma = 0.625;
+// holdMedianMs/holdSigma/holdRho live per-technique on StateParams (see
+// StateParams.h) -- the engine reads those, not a global default, so no
+// global fallback constant is kept here.
 inline constexpr double kHoldMinMs = 15.0;
-inline constexpr double kHoldDelayRho = 0.35;  // tuned so realised corr lands near +0.27
 inline constexpr double kDoublePressHoldMs = 17.0;
 inline constexpr double kDoublePressHoldStdMs = 1.5;
 // A double must leave a plausible interval behind it. Measured remainders
 // after a real double run a median of 122ms with only 6.7% under 50ms.
 inline constexpr double kDoubleMinRemainderMs = 50.0;
-
-// Adaptive mode parameters.
-inline constexpr int kTechniqueTransitionMin = 5;
-inline constexpr int kTechniqueTransitionMax = 15;
-
-// Click mode parameters.
-inline constexpr double kBurstProbability = 0.40;
-inline constexpr double kPauseProbability = 0.02;
-
-// Outlier injection.
-inline constexpr double kOutlierProbability = 0.02;
-
-// Training thresholds.
-inline constexpr int kTrainingMinClicks = 100;
-inline constexpr int kTrainingRecommendedClicks = 200;
-inline constexpr int kTrainingCompleteClicks = 250;
-
-// Resolves %USERPROFILE%\Desktop\Mimic\mimic_data (via SHGetKnownFolderPath,
-// so redirected/OneDrive-relocated Desktops are respected -- unlike Python's
-// os.path.expanduser("~") which is not Desktop-redirection-aware).
-std::wstring trainingDataPath();
-std::wstring clickerDataPath();
-std::wstring sessionsFilePath();
-// Presets historically saved to a DIFFERENT path than everything else
-// (~/Desktop/mimic_data/custom_presets.json instead of
-// ~/Desktop/Mimic/mimic_data/...) -- a pre-existing Python bug. This is the
-// corrected path; presetsFileLegacyPath() is kept only for one-time migration.
-std::wstring presetsFilePath();
-std::wstring presetsFileLegacyPath();
 
 } // namespace mimic::core::config

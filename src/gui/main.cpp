@@ -153,7 +153,13 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    // Deliberately NOT setting ImGuiConfigFlags_NavEnableKeyboard: MainPanel
+    // implements its own arrow/Enter focus model by reading key state
+    // directly (see FocusGrid-style handling in MainPanel::draw()). Enabling
+    // ImGui's built-in keyboard nav here made both systems respond to the
+    // same arrow presses independently, producing two different, desynced
+    // highlighted rows (ImGui's own nav rectangle plus this app's highlight)
+    // -- found via playtesting.
 
     mimic::gui::AppTheme::applyDarkPalette(ImGui::GetStyle());
     mimic::gui::AppTheme::loadFont(io);

@@ -109,26 +109,4 @@ RiskAssessment RiskAssessor::assess(const EngineStats& stats) {
     return result;
 }
 
-const std::array<RiskVisualizationLevel, 6>& RiskVisualization::levels() {
-    static const std::array<RiskVisualizationLevel, 6> kLevels = {{
-        {85, "EXCELLENT", "#00e676", "Indistinguishable"},
-        {70, "GOOD", "#4CAF50", "Safe Range"},
-        {55, "ACCEPTABLE", "#FFC107", "Acceptable"},
-        {40, "CAUTION", "#FF9800", "Needs Improvement"},
-        {25, "RISKY", "#F44336", "High Detection Risk"},
-        {0, "CRITICAL", "#b71c1c", "Extremely Dangerous"},
-    }};
-    return kLevels;
-}
-
-const RiskVisualizationLevel& RiskVisualization::levelFor(int score) {
-    const auto& lv = levels();
-    for (const auto& level : lv) {
-        if (score >= level.minScore) {
-            return level;
-        }
-    }
-    return lv.back();
-}
-
 } // namespace mimic::core::config
