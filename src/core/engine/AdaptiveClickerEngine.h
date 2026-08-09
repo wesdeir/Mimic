@@ -73,6 +73,7 @@ public:
     EngineStats getDetailedStats() const;
 
     bool enhancedMode() const { return enhancedMode_; }
+    void setEnhancedMode(bool enabled) { enhancedMode_ = enabled; }
     std::int64_t totalClicks() const { return totalClicks_; }
     ClickState currentState() const { return static_cast<ClickState>(idx_); }
 

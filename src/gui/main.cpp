@@ -1,8 +1,11 @@
-// Phase 0 scaffolding entry point: opens a blank, dark-themed, monospace
-// ImGui window to prove the CMake + submodule + MSVC + DX11 toolchain works
-// end to end before any real screens/engine logic are ported in. Structure
-// follows Dear ImGui's standard examples/example_win32_directx11 layout.
+// Entry point for the v1 "hacked client" style GUI: one compact panel
+// (MainPanel) driven by AppController, which owns the click thread, the
+// physical-hold input hook, and the F4 global toggle. Window/DX11
+// boilerplate follows Dear ImGui's standard examples/example_win32_directx11
+// layout.
 
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <d3d11.h>
 #include <tchar.h>
 
@@ -10,8 +13,10 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 
+#include "AppController.h"
 #include "app_info.h"
 #include "AppTheme.h"
+#include "MainPanel.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
     HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -24,6 +29,7 @@ IDXGISwapChain* g_pSwapChain = nullptr;
 bool g_SwapChainOccluded = false;
 UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
+mimic::app::AppController* g_controller = nullptr;
 
 void CreateRenderTarget() {
     ID3D11Texture2D* pBackBuffer = nullptr;
@@ -109,6 +115,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 return 0; // Disable ALT application menu
             }
             break;
+        case WM_HOTKEY:
+            if (g_controller) {
+                g_controller->handleHotkeyMessage(wParam);
+            }
+            return 0;
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
@@ -127,7 +138,7 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         L"MimicWindowClass", nullptr};
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Mimic", WS_OVERLAPPEDWINDOW, 100, 100, 900, 780,
+        wc.lpszClassName, L"Mimic", WS_OVERLAPPEDWINDOW, 100, 100, 560, 420,
         nullptr, nullptr, wc.hInstance, nullptr);
 
     if (!CreateDeviceD3D(hwnd)) {
@@ -149,6 +160,14 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+    // Constructed after the window exists (GlobalHotkeys needs the HWND) and
+    // on this thread specifically (InputHook's WH_MOUSE_LL hook and
+    // GlobalHotkeys' WM_HOTKEY both require the installing thread to pump
+    // messages, which is exactly what this loop below does).
+    mimic::app::AppController controller(hwnd);
+    g_controller = &controller;
+    mimic::gui::MainPanel mainPanel(controller);
 
     bool done = false;
     while (!done) {
@@ -181,15 +200,7 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(io.DisplaySize);
-        ImGui::Begin("MimicScaffold", nullptr,
-                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
-                          ImGuiWindowFlags_NoBringToFrontOnFocus);
-        ImGui::Text("%s %s -- scaffold window (Phase 0)", mimic::app::appTitle(),
-                    mimic::app::appVersion());
-        ImGui::TextDisabled("Engine/GUI screens not ported yet.");
-        ImGui::End();
+        mainPanel.draw();
 
         ImGui::Render();
         const float clearColor[4] = {0.05f, 0.05f, 0.05f, 1.00f};
