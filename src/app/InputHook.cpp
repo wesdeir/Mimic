@@ -6,13 +6,40 @@ InputHook* InputHook::s_active = nullptr;
 
 InputHook::InputHook() {
     s_active = this;
-    hook_ = SetWindowsHookExW(WH_MOUSE_LL, &InputHook::hookProc, GetModuleHandleW(nullptr), 0);
+
+    // Manual-reset, initially unsignaled: the constructor blocks on it so
+    // isLeftButtonPhysicallyHeld() is reliable the moment InputHook exists,
+    // same as before this was split onto its own thread.
+    HANDLE readyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    thread_ = std::thread([this, readyEvent] {
+        threadId_ = GetCurrentThreadId();
+        hook_ = SetWindowsHookExW(WH_MOUSE_LL, &InputHook::hookProc, GetModuleHandleW(nullptr), 0);
+        SetEvent(readyEvent);
+
+        // Nothing but message pumping happens on this thread, ever --
+        // that's the whole point: the hook stays serviced immediately no
+        // matter what the GUI thread is doing (rendering, occluded,
+        // sleeping).
+        MSG msg;
+        while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+
+        if (hook_) {
+            UnhookWindowsHookEx(hook_);
+            hook_ = nullptr;
+        }
+    });
+
+    WaitForSingleObject(readyEvent, INFINITE);
+    CloseHandle(readyEvent);
 }
 
 InputHook::~InputHook() {
-    if (hook_) {
-        UnhookWindowsHookEx(hook_);
-        hook_ = nullptr;
+    if (thread_.joinable()) {
+        PostThreadMessageW(threadId_, WM_QUIT, 0, 0);
+        thread_.join();
     }
     if (s_active == this) {
         s_active = nullptr;

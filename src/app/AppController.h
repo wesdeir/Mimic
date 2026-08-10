@@ -27,8 +27,10 @@ namespace mimic::app {
 class AppController {
 public:
     // hwnd must already exist (needed by GlobalHotkeys/RegisterHotKey) and
-    // must belong to the thread pumping the app's Win32 message loop (needed
-    // by InputHook's WH_MOUSE_LL hook).
+    // this constructor must run on the thread pumping the app's Win32
+    // message loop (needed by GlobalHotkeys' WM_HOTKEY delivery). InputHook
+    // installs its WH_MOUSE_LL hook on its own dedicated thread and has no
+    // such requirement -- see InputHook.h.
     explicit AppController(HWND hwnd);
     ~AppController();
 

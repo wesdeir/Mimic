@@ -200,9 +200,10 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     // Constructed after the window exists (GlobalHotkeys needs the HWND) and
-    // on this thread specifically (InputHook's WH_MOUSE_LL hook and
-    // GlobalHotkeys' WM_HOTKEY both require the installing thread to pump
-    // messages, which is exactly what this loop below does).
+    // on this thread specifically (GlobalHotkeys' WM_HOTKEY requires the
+    // installing thread to pump messages, which is exactly what this loop
+    // below does). InputHook installs its WH_MOUSE_LL hook on its own
+    // dedicated thread, decoupled from this render loop -- see InputHook.h.
     mimic::app::AppController controller(hwnd);
     g_controller = &controller;
     mimic::gui::MainPanel mainPanel(controller);

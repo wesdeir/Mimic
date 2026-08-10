@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <thread>
 
 // Drives the "hold left click to auto-click" activation (README: "Hold LEFT
 // CLICK to auto-click, Release to stop"). A single WH_MOUSE_LL hook,
@@ -14,8 +15,15 @@
 // with two separate mechanisms (pynput's `injected` check for hold
 // detection, a second raw hook in session.py for recording).
 //
-// Must be constructed on the thread that pumps the app's Win32 message
-// loop -- WH_MOUSE_LL callbacks only fire on that thread.
+// Owns a dedicated thread that does nothing but install the hook and pump
+// its message queue. WH_MOUSE_LL callbacks run synchronously and
+// system-wide on whichever thread installed the hook, so sharing that
+// thread with the GUI's render loop meant every mouse event on the whole
+// machine stalled behind main.cpp's occlusion-poll Sleep(10) whenever
+// another app took the display (e.g. a fullscreened game) -- real, global
+// mouse input lag, found via playtesting. A thread with no Present()/
+// Sleep() of its own keeps the hook responsive no matter what the render
+// loop is doing.
 
 namespace mimic::app {
 
@@ -34,6 +42,14 @@ private:
 
     HHOOK hook_ = nullptr;
     std::atomic<bool> held_{false};
+
+    // Set inside the hook thread before it signals ready; safe to read
+    // from the constructing thread afterward (the ready-event wait below
+    // is the synchronizing acquire/release pair), and only ever touched
+    // by the hook thread itself thereafter (PostThreadMessageW targets it
+    // by value, not through a data race).
+    std::thread thread_;
+    DWORD threadId_ = 0;
 
     static InputHook* s_active;
 };
