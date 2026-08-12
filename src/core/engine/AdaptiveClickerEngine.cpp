@@ -21,6 +21,9 @@ std::array<StateParams, 3> copyDefaultStates() {
 }
 }  // namespace
 
+// ----------------------------------------------------------------------
+// Constructor
+// ----------------------------------------------------------------------
 AdaptiveClickerEngine::AdaptiveClickerEngine(bool enhancedMode, const std::string& presetName,
                                               std::uint64_t rngSeed)
     : enhancedMode_(enhancedMode),
@@ -32,26 +35,58 @@ AdaptiveClickerEngine::AdaptiveClickerEngine(bool enhancedMode, const std::strin
       rng_(rngSeed != 0 ? rngSeed
                          : static_cast<std::uint64_t>(PlatformClock::nowSeconds() * 1e6)),
       normals_(rng_, RngPool::Kind::Normal),
-      uniforms_(rng_, RngPool::Kind::Uniform) {
+      uniforms_(rng_, RngPool::Kind::Uniform),
+      d_param_(0.0),
+      last_weights_d_(-1.0),
+      fgn_memory_length_(100),
+      fgn_innovations_(fgn_memory_length_, 0.0),
+      fgn_weights_(fgn_memory_length_, 0.0),
+      fgn_index_(0),
+      fatigueLambda_(0.0),
+      fatigueMax_(0.0),
+      rhythmAmount_(0.0),
+      doubleClickAlpha_(0.0),
+      motorSigma_(0.0),
+      exGaussAlpha_(0.0),
+      exGaussLambda_(10.0),
+      weberCV_(0.0),
+      pollPhaseDrift_(0.0),
+      pollDriftRate_(0.0),
+      effectivePollPeriod_(cfg::kPollRateHz > 0 ? 1000.0 / cfg::kPollRateHz : 0.0),
+      targetCps_(12.0)                          // default 12 CPS
+{
+    d_param_ = uniformInRange(0.2, 0.4);
     userBaseline_ = uniformInRange(0.88, 1.12);
     doubleSessionFactor_ = uniformInRange(cfg::kDoubleSessionMin, cfg::kDoubleSessionMax);
 
+    fatigueLambda_ = uniformInRange(8.0, 18.0);
+    fatigueMax_    = uniformInRange(0.15, 0.30);
+
+    rhythmAmount_ = uniformInRange(0.025, 0.075);
+    doubleClickAlpha_ = uniformInRange(0.15, 0.35);
+
+    motorSigma_ = uniformInRange(8.0, 15.0);
+    weberCV_    = uniformInRange(0.04, 0.08);
+    exGaussAlpha_ = uniformInRange(0.3, 0.7);
+    pollDriftRate_ = uniformInRange(-50.0, 50.0);
+
+    updateFracWeights();
     resetState(ClickState::Normal);
-    if (!presetName.empty()) {
-        setPreset(presetName);
-    }
+    if (!presetName.empty()) setPreset(presetName);
 }
 
+// ----------------------------------------------------------------------
+// Preset management
+// ----------------------------------------------------------------------
 void AdaptiveClickerEngine::setPreset(const std::string& presetName) {
     const cfg::PresetConfig* preset = cfg::ClickEnginePresets::find(presetName);
     if (!preset) return;
 
     auto rebuild = [&](ClickState s, double mean, double std) {
         const StateParams& base = states_[stateIndex(s)];
-        return StateParams::fromMoments(s, mean, std, base.phi, base.holdMedianMs, base.holdSigma,
-                                         base.holdRho, base.doubleRate);
+        return StateParams::fromMoments(s, mean, std, base.phi, base.holdMedianMs,
+                                         base.holdSigma, base.holdRho, base.doubleRate);
     };
-
     states_[stateIndex(ClickState::Butterfly)] =
         rebuild(ClickState::Butterfly, preset->butterflyMean, preset->butterflyStd);
     states_[stateIndex(ClickState::Jitter)] =
@@ -66,20 +101,44 @@ void AdaptiveClickerEngine::setPreset(const std::string& presetName) {
 void AdaptiveClickerEngine::resetState(ClickState initial) {
     idx_ = stateIndex(initial);
     const StateParams& params = states_[idx_];
-
-    phi_ = params.phi;
+    phi_   = params.phi;
     sigma_ = params.sigma;
-    base_ = params.baseRate;
-
-    fromPhi_ = phi_;
-    fromSigma_ = sigma_;
-    fromBase_ = base_;
+    // base_ is now computed to meet target CPS, ignoring params.baseRate
+    base_  = computeBaseForTarget();
+    fromPhi_ = phi_; fromSigma_ = sigma_; fromBase_ = base_;
     blendRemaining_ = 0;
-
-    u_ = normals_.next();  // stationary unit-variance seeding, breaks burn-in signatures
+    u_ = normals_.next();
     consecutiveClicks_ = 0;
+    motorDelayPrev_ = 0.0;
 }
 
+// ----------------------------------------------------------------------
+// Target CPS setter
+// ----------------------------------------------------------------------
+void AdaptiveClickerEngine::setTargetCps(double cps) {
+    targetCps_ = std::max(1.0, std::min(cps, 20.0));
+    // Recompute base_ for current state to reflect new target
+    if (isActivelyClicking_) {
+        base_ = computeBaseForTarget();
+    }
+}
+
+// ----------------------------------------------------------------------
+// Compute the base median delay that, after all multipliers, yields target CPS
+// ----------------------------------------------------------------------
+double AdaptiveClickerEngine::computeBaseForTarget() const {
+    // Average multiplier: weberCV scaling, fatigue (saturated), and userBaseline (=1.0)
+    // Rhythm and drift have average 1.0.
+    double weberFactor = std::exp(0.5 * weberCV_ * weberCV_);   // E[exp(weberCV * u)]
+    double fatigueFactor = 1.0 + fatigueMax_;                   // worst-case (steady state)
+    double multiplier = weberFactor * fatigueFactor;
+    double targetMs = 1000.0 / targetCps_;
+    return targetMs / std::max(multiplier, 0.7);
+}
+
+// ----------------------------------------------------------------------
+// Session start/stop
+// ----------------------------------------------------------------------
 void AdaptiveClickerEngine::startClicking() {
     if (isActivelyClicking_) return;
     isActivelyClicking_ = true;
@@ -89,8 +148,18 @@ void AdaptiveClickerEngine::startClicking() {
     drift_ = uniformInRange(-0.15, 0.15);
     rhythmPhase_ = uniformInRange(0.0, kTwoPi);
 
-    resetState(ClickState::Normal);
+    fatigueLambda_ = uniformInRange(8.0, 18.0);
+    fatigueMax_    = uniformInRange(0.15, 0.30);
+    rhythmAmount_  = uniformInRange(0.025, 0.075);
+    doubleClickAlpha_ = uniformInRange(0.15, 0.35);
+    motorSigma_    = uniformInRange(8.0, 15.0);
+    weberCV_       = uniformInRange(0.04, 0.08);
+    exGaussAlpha_  = uniformInRange(0.3, 0.7);
+    pollDriftRate_ = uniformInRange(-50.0, 50.0);
+    pollPhaseDrift_ = 0.0;
+    effectivePollPeriod_ = cfg::kPollRateHz > 0 ? 1000.0 / cfg::kPollRateHz : 0.0;
 
+    resetState(ClickState::Normal);
     const double startupDelay = std::abs(gaussian(0.09, 0.025));
     PlatformClock::preciseSleep(startupDelay);
 }
@@ -101,163 +170,233 @@ void AdaptiveClickerEngine::stopClicking() {
     resetState(ClickState::Normal);
 }
 
+// ----------------------------------------------------------------------
+// State blending
+// ----------------------------------------------------------------------
 void AdaptiveClickerEngine::advanceState() {
     const auto& row = transitionCdf()[idx_];
-    const double v = uniform01();  // ONE draw, checked against all thresholds --
-                                    // a previous version drew fresh per threshold,
-                                    // which biased the chain's stationary occupancy.
+    const double v = uniform01();
     int next = 2;
     for (int col = 0; col < 3; ++col) {
-        if (v <= row[col]) {
-            next = col;
-            break;
-        }
+        if (v <= row[col]) { next = col; break; }
     }
     if (next == idx_) return;
 
-    fromPhi_ = phi_;
-    fromSigma_ = sigma_;
-    fromBase_ = base_;
+    fromPhi_ = phi_; fromSigma_ = sigma_; fromBase_ = base_;
     idx_ = next;
     blendRemaining_ = kBlendSteps;
     ++patternBreaks_;
-    if (static_cast<ClickState>(next) == ClickState::Butterfly) {
-        ++burstCount_;
-    }
+    if (static_cast<ClickState>(next) == ClickState::Butterfly) ++burstCount_;
 }
 
 void AdaptiveClickerEngine::advanceBlend() {
     const StateParams& target = states_[idx_];
     if (blendRemaining_ <= 0) {
-        phi_ = target.phi;
-        sigma_ = target.sigma;
-        base_ = target.baseRate;
+        phi_ = target.phi; sigma_ = target.sigma; base_ = computeBaseForTarget();
         return;
     }
-
     const double done = kBlendSteps - blendRemaining_ + 1;
     const double alpha = done / kBlendSteps;
-    const double w = alpha * alpha * (3.0 - 2.0 * alpha);  // smoothstep
-
-    phi_ = (1.0 - w) * fromPhi_ + w * target.phi;
+    const double w = alpha * alpha * (3.0 - 2.0 * alpha);
+    phi_   = (1.0 - w) * fromPhi_   + w * target.phi;
     sigma_ = (1.0 - w) * fromSigma_ + w * target.sigma;
-    base_ = (1.0 - w) * fromBase_ + w * target.baseRate;
+    // base_ blends toward the computed target base, not preset’s baseRate
+    base_  = (1.0 - w) * fromBase_  + w * computeBaseForTarget();
     --blendRemaining_;
 }
 
+// ----------------------------------------------------------------------
+// CPS safety (soft probabilistic)
+// ----------------------------------------------------------------------
 double AdaptiveClickerEngine::checkCpsSafety() {
     const double now = PlatformClock::nowSeconds();
-    while (!recentClickTimes_.empty() && now - recentClickTimes_.front() > 5.0) {
+    while (!recentClickTimes_.empty() && now - recentClickTimes_.front() > 5.0)
         recentClickTimes_.popFront();
-    }
 
     if (recentClickTimes_.size() >= 2) {
         int recent1s = 0;
-        for (std::size_t i = 0; i < recentClickTimes_.size(); ++i) {
+        for (std::size_t i = 0; i < recentClickTimes_.size(); ++i)
             if (now - recentClickTimes_[i] <= 1.0) ++recent1s;
-        }
-        if (recent1s >= 16) return 0.08;
 
+        if (recent1s >= 15) {
+            const double excess = (recent1s - 14.0) / 3.0;
+            const double scale = std::max(0.0, excess) * 0.09;
+            const double extra = gaussian(scale, scale * 0.5);
+            if (extra > 0) return extra;
+        }
         const double timeSpan = now - recentClickTimes_.front();
-        const double avgCps = timeSpan > 0 ? recentClickTimes_.size() / timeSpan : 0.0;
-        if (avgCps > cfg::kSustainedCpsCap) return 0.05;
+        if (timeSpan > 3.0) {
+            const double avgCps = recentClickTimes_.size() / timeSpan;
+            if (avgCps > 14.5) return gaussian(0.015, 0.005);
+        }
     }
     return 0.0;
 }
 
+// ----------------------------------------------------------------------
+// Fractional Gaussian noise helpers
+// ----------------------------------------------------------------------
+void AdaptiveClickerEngine::updateFracWeights() {
+    const double d = d_param_;
+    double sum_sq = 0.0;
+    double psi = 1.0;
+    fgn_weights_[0] = psi;
+    sum_sq += psi * psi;
+    for (int k = 1; k < fgn_memory_length_; ++k) {
+        psi *= (k - 1 + d) / k;
+        fgn_weights_[k] = psi;
+        sum_sq += psi * psi;
+    }
+    const double inv_norm = 1.0 / std::sqrt(sum_sq);
+    for (int k = 0; k < fgn_memory_length_; ++k)
+        fgn_weights_[k] *= inv_norm;
+    last_weights_d_ = d;
+}
+
+double AdaptiveClickerEngine::generateFracNoise() {
+    const double eps = normals_.next();
+    fgn_innovations_[fgn_index_] = eps;
+    fgn_index_ = (fgn_index_ + 1) % fgn_memory_length_;
+
+    double u = 0.0;
+    int idx = fgn_index_ - 1;
+    for (int k = 0; k < fgn_memory_length_; ++k) {
+        if (idx < 0) idx += fgn_memory_length_;
+        u += fgn_weights_[k] * fgn_innovations_[idx];
+        --idx;
+    }
+    return u;
+}
+
+// ----------------------------------------------------------------------
+// Ex‑Gaussian generation
+// ----------------------------------------------------------------------
+double AdaptiveClickerEngine::generateExGaussian(double mu, double sigma,
+                                                 double alpha, double lambda) {
+    double u = uniform01();
+    double expVal = -std::log(1.0 - u) / lambda;           // E ~ Exp(lambda)
+    double normVal = gaussian(0.0, sigma);
+    return mu + alpha * (expVal - 1.0 / lambda) + normVal; // zero mean shift
+}
+
+// ----------------------------------------------------------------------
+// Soft boundary reflection (avoids histogram peaks)
+// ----------------------------------------------------------------------
+double AdaptiveClickerEngine::softReflect(double value, double lo, double hi) {
+    for (int attempt = 0; attempt < 10; ++attempt) {
+        double u = generateFracNoise();
+        double redraw = base_ * std::exp(weberCV_ * u) * userBaseline_;
+        redraw *= 1.0 + fatigueMax_ * (1.0 - std::exp(-consecutiveClicks_ / fatigueLambda_));
+        if (redraw >= lo && redraw <= hi) return redraw;
+    }
+    if (value < lo) return lo + uniformInRange(0.0, (lo - value) * 0.5);
+    else            return hi - uniformInRange(0.0, (value - hi) * 0.5);
+}
+
+// ----------------------------------------------------------------------
+// Core delay calculation (full pipeline)
+// ----------------------------------------------------------------------
 double AdaptiveClickerEngine::calculateDelay() {
     advanceState();
     advanceBlend();
 
-    // 1. Update unit-variance core noise line.
-    u_ = phi_ * u_ + std::sqrt(1.0 - phi_ * phi_) * normals_.next();
+    // Diffuse fractional parameter d
+    d_param_ += gaussian(0.0, 0.00015);
+    d_param_ = std::max(0.15, std::min(0.45, d_param_));
+    if (std::fabs(d_param_ - last_weights_d_) > 0.005) updateFracWeights();
 
-    // Log-normal: base_ is the median, sigma_ the relative spread -- gives
-    // the right-skewed shape real clicking has instead of a symmetric bell.
-    double base = base_ * std::exp(sigma_ * u_);
+    // Drift all non‑stationary parameters
+    fatigueLambda_  += gaussian(0.0, 0.0002);
+    fatigueLambda_   = std::max(7.0, std::min(20.0, fatigueLambda_));
+    fatigueMax_     += gaussian(0.0, 0.0001);
+    fatigueMax_      = std::max(0.12, std::min(0.35, fatigueMax_));
+    rhythmAmount_   += gaussian(0.0, 0.0002);
+    rhythmAmount_    = std::max(0.015, std::min(0.095, rhythmAmount_));
+    userBaseline_   += gaussian(0.0, 0.0001);
+    if (userBaseline_ < 0.85) userBaseline_ += 0.001;
+    if (userBaseline_ > 1.15) userBaseline_ -= 0.001;
+    doubleClickAlpha_ += gaussian(0.0, 0.00015);
+    doubleClickAlpha_  = std::max(0.1, std::min(0.4, doubleClickAlpha_));
+    motorSigma_     += gaussian(0.0, 0.02);
+    motorSigma_      = std::max(5.0, std::min(20.0, motorSigma_));
+    weberCV_        += gaussian(0.0, 0.0003);
+    weberCV_         = std::max(0.03, std::min(0.10, weberCV_));
+    exGaussAlpha_   += gaussian(0.0, 0.002);
+    exGaussAlpha_    = std::max(0.2, std::min(0.9, exGaussAlpha_));
 
-    // 2. Continuous exponential fatigue decay. consecutiveClicks_ decays
-    // while idle (see click()), so this recovers during pauses instead of
-    // staying pinned at the max multiplier all session.
-    constexpr double kLambdaRate = 12.0;
-    constexpr double kMaxFatigueSlowdown = 0.22;
-    const double fatigueMultiplier =
-        1.0 + kMaxFatigueSlowdown * (1.0 - std::exp(-consecutiveClicks_ / kLambdaRate));
-    base *= fatigueMultiplier;
+    // Polling drift & occasional skips
+    pollPhaseDrift_ += pollDriftRate_ * 1e-6 * effectivePollPeriod_;
+    effectivePollPeriod_ = (cfg::kPollRateHz > 0)
+        ? (1000.0 / cfg::kPollRateHz) * (1.0 + pollDriftRate_ * 1e-6 * totalClicks_) : 0.0;
+    pollSkipNext_ = (uniform01() < 0.005);
 
-    // 3. User baseline multiplier and mean-reverting (Ornstein-Uhlenbeck)
-    // drift -- decays back to centre so it only contributes short-range
-    // autocorrelation, unlike an unbounded random walk.
-    base *= userBaseline_;
+    u_ = generateFracNoise();                       // fractional Gaussian
+
+    // --- Generate interval using target‑calibrated base_ ---
+    double mu = base_ * std::exp(weberCV_ * u_);    // Weber core
+    mu *= 1.0 + fatigueMax_ * (1.0 - std::exp(-consecutiveClicks_ / fatigueLambda_));
+    mu *= userBaseline_;
+
+    // Economic drift (mean-reverting)
     const double rho = cfg::kDriftReversion;
     const double shock = cfg::kDriftSigma * std::sqrt(1.0 - rho * rho);
     drift_ = rho * drift_ + shock * normals_.next();
-    base *= (1.0 + drift_);
+    mu *= (1.0 + drift_);
 
-    // 4. Rhythmic sinusoidal oscillation. Stepping most of the way around
-    // the circle each click keeps rhythm texture without long-range memory.
+    // Rhythmic modulation
     rhythmPhase_ = std::fmod(rhythmPhase_ + uniformInRange(1.1, 2.6), kTwoPi);
-    const double rhythmAmount = enhancedMode_ ? 0.055 : 0.038;
-    base *= (1.0 + std::sin(rhythmPhase_) * rhythmAmount);
+    mu *= (1.0 + std::sin(rhythmPhase_) * rhythmAmount_);
 
-    // 5. Occasional long pause -- real sessions put 1.85% of clicks past
-    // 250ms and reach 475ms.
-    if (uniform01() < 0.018) {
-        base += std::abs(gaussian(0.0, 95.0));
+    // Rare missed swing (single‑interval elongation)
+    if (uniform01() < 0.001) {
+        mu *= uniformInRange(1.8, 2.2);
         ++pauseCount_;
     }
 
-    if (sigma_ > 0 && std::abs(u_) > 2.5) {
-        ++outlierCount_;
-    }
+    // Central clock interval (ex‑Gaussian, with FGN in the normal part)
+    double clockInterval = generateExGaussian(mu, weberCV_ * mu, exGaussAlpha_, exGaussLambda_);
 
-    // 6. Reflect at the boundaries rather than clamp, so the histogram
-    // doesn't spike exactly at the bound.
+    // Motor delay M_k (Gamma(2, motorSigma_/2) via sum of two exponentials)
+    double e1 = -std::log(1.0 - uniform01());
+    double e2 = -std::log(1.0 - uniform01());
+    double motorDelay = (e1 + e2) * (motorSigma_ / 2.0);
+
+    // Wing‑Kristofferson output
+    double interval = clockInterval + motorDelay - motorDelayPrev_;
+    motorDelayPrev_ = motorDelay;
+
+    if (sigma_ > 0 && std::abs(u_) > 2.5) ++outlierCount_;
+
     const double lo = enhancedMode_ ? cfg::kEnhancedMinDelayMs : cfg::kAbsoluteMinDelayMs;
     const double hi = enhancedMode_ ? cfg::kEnhancedMaxDelayMs : cfg::kAbsoluteMaxDelayMs;
 
-    double final = base;
-    for (int i = 0; i < 4; ++i) {
-        if (final < lo) {
-            final = lo + (lo - final);
-        } else if (final > hi) {
-            final = hi - (final - hi);
-        } else {
-            break;
-        }
-    }
-    final = std::min(hi, std::max(lo, final));
+    if (interval < lo || interval > hi) interval = softReflect(interval, lo, hi);
+    interval = std::min(hi, std::max(lo, interval));
 
-    // 7. Snap onto the USB polling grid, then re-jitter by the amount real
-    // hardware jitters -- a busy-wait loop has no polling-boundary
-    // constraint, which is a free synthetic-vs-hardware discriminator.
-    if (cfg::kPollRateHz > 0.0) {
-        const double grid = 1000.0 / cfg::kPollRateHz;
-        final = std::round(final / grid) * grid + gaussian(0.0, cfg::kPollJitterMs);
-        final = std::min(hi, std::max(lo, final));
+    // Polling quantisation with drift
+    if (cfg::kPollRateHz > 0.0 && !pollSkipNext_) {
+        const double grid = effectivePollPeriod_;
+        interval = std::round(interval / grid) * grid + gaussian(0.0, cfg::kPollJitterMs);
+        interval = std::min(hi, std::max(lo, interval));
     }
 
-    clickHistory_.push(final);
-    allDelays_.push(final);
-
-    // Welford update.
+    clickHistory_.push(interval);
+    allDelays_.push(interval);
     ++n_;
-    const double d = final - mean_;
+    const double d = interval - mean_;
     mean_ += d / static_cast<double>(n_);
-    m2_ += d * (final - mean_);
-
-    return final;
+    m2_ += d * (interval - mean_);
+    return interval;
 }
 
+// ----------------------------------------------------------------------
+// Hold time generation (correlated with u_)
+// ----------------------------------------------------------------------
 double AdaptiveClickerEngine::drawHold(double delayMs, bool willDouble) {
     if (willDouble) {
         return std::max(1.0, gaussian(cfg::kDoublePressHoldMs, cfg::kDoublePressHoldStdMs));
     }
 
-    // Hold parameters follow the CURRENT technique; u_ is the AR(1) noise
-    // that drove this interval, so blending it into the hold's own noise
-    // reproduces the observed positive hold/next-interval coupling without
-    // modelling the joint distribution explicitly.
     const StateParams& st = states_[idx_];
     const double rho = st.holdRho;
     const double z = rho * u_ + std::sqrt(std::max(0.0, 1.0 - rho * rho)) * normals_.next();
@@ -271,6 +410,9 @@ double AdaptiveClickerEngine::currentDoubleRate() const {
     return std::min(0.85, states_[idx_].doubleRate * doubleSessionFactor_);
 }
 
+// ----------------------------------------------------------------------
+// Click execution (with coupled double‑click gap)
+// ----------------------------------------------------------------------
 void AdaptiveClickerEngine::click() {
     const double safety = checkCpsSafety();
     if (safety > 0) {
@@ -279,7 +421,6 @@ void AdaptiveClickerEngine::click() {
 
     const double now = PlatformClock::nowSeconds();
 
-    // Fatigue recovery: if idle for a moment, the hand relaxes.
     if (lastClickWallSeconds_) {
         const double idle = now - *lastClickWallSeconds_;
         if (idle > 0.35) {
@@ -288,16 +429,12 @@ void AdaptiveClickerEngine::click() {
     }
     lastClickWallSeconds_ = now;
 
-    // Full press-to-press period, matching how HumanClickTracker records
-    // training data (on physical press only).
     const double delayMs = calculateDelay();
 
-    // Decide the double BEFORE the hold: a press that gets doubled holds
-    // ~17ms, one that doesn't holds ~46ms -- that structure drives most of
-    // the measured +0.425 hold/next-interval correlation.
-    const double gap = gaussian(cfg::kDoubleGapMs, cfg::kDoubleGapStdMs);
+    const double baseGap = doubleClickAlpha_ * delayMs;
+    const double gap = baseGap + gaussian(0.0, cfg::kDoubleGapStdMs);
     const bool willDouble = cfg::kDoubleClickEmulation && uniform01() < currentDoubleRate() &&
-                             delayMs - (gap + cfg::kDoubleHoldMs) >= cfg::kDoubleMinRemainderMs;
+                             gap > 0.0 && delayMs - (gap + cfg::kDoubleHoldMs) >= cfg::kDoubleMinRemainderMs;
 
     const double pressureMs = drawHold(delayMs, willDouble);
 
@@ -313,9 +450,6 @@ void AdaptiveClickerEngine::click() {
     cpsHistory_.push(currentCps);
     cpsTimestamps_.push(PlatformClock::nowSeconds());
 
-    // Optional hardware-double emulation: reproduces a double-clicking
-    // mouse's second actuation so the synthetic stream matches what this
-    // account's hardware has always produced.
     double consumed = pressureMs;
     if (willDouble && gap > pressureMs) {
         const double budget = delayMs - gap - cfg::kDoubleMinRemainderMs;
@@ -330,10 +464,12 @@ void AdaptiveClickerEngine::click() {
         ++doubleCount_;
     }
 
-    // The hold is PART of the interval, not additional to it.
     PlatformClock::preciseSleep(std::max(0.0, delayMs - consumed) / 1000.0);
 }
 
+// ----------------------------------------------------------------------
+// Simulation & CSV export
+// ----------------------------------------------------------------------
 std::vector<double> AdaptiveClickerEngine::simulateStream(int n) {
     std::vector<double> out;
     out.reserve(n);
@@ -370,6 +506,9 @@ int AdaptiveClickerEngine::exportToCsv(const std::string& filepath) const {
     return static_cast<int>(delays.size());
 }
 
+// ----------------------------------------------------------------------
+// Statistics
+// ----------------------------------------------------------------------
 double AdaptiveClickerEngine::calculateVariance() const {
     if (clickHistory_.size() < 2) return 0.0;
     const auto w = clickHistory_.toVector();
