@@ -53,7 +53,7 @@ AdaptiveClickerEngine::AdaptiveClickerEngine(bool enhancedMode, const std::strin
       pollPhaseDrift_(0.0),
       pollDriftRate_(0.0),
       effectivePollPeriod_(cfg::kPollRateHz > 0 ? 1000.0 / cfg::kPollRateHz : 0.0),
-      targetCps_(12.0)                          // default 12 CPS
+      targetCps_(12.0)
 {
     d_param_ = uniformInRange(0.2, 0.4);
     userBaseline_ = uniformInRange(0.88, 1.12);
@@ -71,6 +71,12 @@ AdaptiveClickerEngine::AdaptiveClickerEngine(bool enhancedMode, const std::strin
     pollDriftRate_ = uniformInRange(-50.0, 50.0);
 
     updateFracWeights();
+
+    // ---- FIX: pre‑seed the FGN innovation buffer ----
+    for (int i = 0; i < fgn_memory_length_; ++i) {
+        fgn_innovations_[i] = normals_.next();
+    }
+
     resetState(ClickState::Normal);
     if (!presetName.empty()) setPreset(presetName);
 }
@@ -103,8 +109,7 @@ void AdaptiveClickerEngine::resetState(ClickState initial) {
     const StateParams& params = states_[idx_];
     phi_   = params.phi;
     sigma_ = params.sigma;
-    // base_ is now computed to meet target CPS, ignoring params.baseRate
-    base_  = computeBaseForTarget();
+    base_  = computeBaseForTarget();   // target‑CPS calibrated
     fromPhi_ = phi_; fromSigma_ = sigma_; fromBase_ = base_;
     blendRemaining_ = 0;
     u_ = normals_.next();
@@ -117,20 +122,17 @@ void AdaptiveClickerEngine::resetState(ClickState initial) {
 // ----------------------------------------------------------------------
 void AdaptiveClickerEngine::setTargetCps(double cps) {
     targetCps_ = std::max(1.0, std::min(cps, 20.0));
-    // Recompute base_ for current state to reflect new target
     if (isActivelyClicking_) {
         base_ = computeBaseForTarget();
     }
 }
 
 // ----------------------------------------------------------------------
-// Compute the base median delay that, after all multipliers, yields target CPS
+// Compute base median to meet target CPS
 // ----------------------------------------------------------------------
 double AdaptiveClickerEngine::computeBaseForTarget() const {
-    // Average multiplier: weberCV scaling, fatigue (saturated), and userBaseline (=1.0)
-    // Rhythm and drift have average 1.0.
-    double weberFactor = std::exp(0.5 * weberCV_ * weberCV_);   // E[exp(weberCV * u)]
-    double fatigueFactor = 1.0 + fatigueMax_;                   // worst-case (steady state)
+    double weberFactor = std::exp(0.5 * weberCV_ * weberCV_);
+    double fatigueFactor = 1.0 + fatigueMax_;   // steady‑state average
     double multiplier = weberFactor * fatigueFactor;
     double targetMs = 1000.0 / targetCps_;
     return targetMs / std::max(multiplier, 0.7);
@@ -200,7 +202,6 @@ void AdaptiveClickerEngine::advanceBlend() {
     const double w = alpha * alpha * (3.0 - 2.0 * alpha);
     phi_   = (1.0 - w) * fromPhi_   + w * target.phi;
     sigma_ = (1.0 - w) * fromSigma_ + w * target.sigma;
-    // base_ blends toward the computed target base, not preset’s baseRate
     base_  = (1.0 - w) * fromBase_  + w * computeBaseForTarget();
     --blendRemaining_;
 }
@@ -274,17 +275,18 @@ double AdaptiveClickerEngine::generateFracNoise() {
 double AdaptiveClickerEngine::generateExGaussian(double mu, double sigma,
                                                  double alpha, double lambda) {
     double u = uniform01();
-    double expVal = -std::log(1.0 - u) / lambda;           // E ~ Exp(lambda)
+    double expVal = -std::log(1.0 - u) / lambda;
     double normVal = gaussian(0.0, sigma);
-    return mu + alpha * (expVal - 1.0 / lambda) + normVal; // zero mean shift
+    return mu + alpha * (expVal - 1.0 / lambda) + normVal;
 }
 
 // ----------------------------------------------------------------------
-// Soft boundary reflection (avoids histogram peaks)
+// Soft boundary reflection (FIX: no FGN consumption)
 // ----------------------------------------------------------------------
 double AdaptiveClickerEngine::softReflect(double value, double lo, double hi) {
     for (int attempt = 0; attempt < 10; ++attempt) {
-        double u = generateFracNoise();
+        // Use an independent normal draw instead of generateFracNoise()
+        double u = gaussian(0.0, 1.0);   // independent, does not advance FGN state
         double redraw = base_ * std::exp(weberCV_ * u) * userBaseline_;
         redraw *= 1.0 + fatigueMax_ * (1.0 - std::exp(-consecutiveClicks_ / fatigueLambda_));
         if (redraw >= lo && redraw <= hi) return redraw;
@@ -332,7 +334,6 @@ double AdaptiveClickerEngine::calculateDelay() {
 
     u_ = generateFracNoise();                       // fractional Gaussian
 
-    // --- Generate interval using target‑calibrated base_ ---
     double mu = base_ * std::exp(weberCV_ * u_);    // Weber core
     mu *= 1.0 + fatigueMax_ * (1.0 - std::exp(-consecutiveClicks_ / fatigueLambda_));
     mu *= userBaseline_;
