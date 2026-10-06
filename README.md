@@ -121,3 +121,9 @@ python_legacy/             original Python implementation (reference only)
 ## Disclaimer
 
 For educational and research purposes. Using automation in online games generally violates their Terms of Service and can result in account bans. Use on your own account at your own risk; the author accepts no responsibility for damages arising from use of this tool.
+
+---
+
+## License
+
+Mimic is released under the [MIT License](LICENSE). Third-party components (Dear ImGui, Catch2) are distributed under their own licenses.
